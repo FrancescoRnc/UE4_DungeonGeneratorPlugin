@@ -8,16 +8,24 @@
 #include "DungeonData.generated.h"
 
 
+enum class EDungeonInfoState : uint8
+{
+	NOVALID = 0,
+	VALID = 1,
+	MAX = 2
+};
+
 /**
 *  FDungeonInfo Struct
 */
 struct FDungeonInfo
 {
-	FGrid Grid;
-	FIntVector GridSize;
-	TArray<int32> GridScheme;
+	EDungeonInfoState State = EDungeonInfoState::NOVALID;
+	FGrid Grid{};
+	FIntVector GridSize{ 0,0,0 };
+	TArray<int32> GridScheme{};
 	
-	TArray<struct FRoomInfo> RoomsInfo;
+	TArray<struct FRoomInfo> RoomsInfo{};
 
 	void Reset();
 };

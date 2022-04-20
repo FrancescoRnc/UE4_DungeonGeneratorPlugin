@@ -2,9 +2,11 @@
 
 #include "DungeonUtilities.h"
 
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Door.h"
 #include "DungeonData.h"
-#include "AssetRegistry/AssetRegistryModule.h"
+#include "GenerationSettings.h"
+
 
 
 // FDungeonUtils
@@ -85,13 +87,16 @@ const bool FDungeonUtils::RescanAssetReferences() const
 	TArray<FAssetData> DungeonAssets;
 	if (FAssetRegistryModule::GetRegistry().GetAssetsByPath(PrefabricsPath, DungeonAssets, true))
 	{
-		const URoomPresetPtr Dungeon = Cast<URoomPreset>(DungeonAssets[0].GetAsset());
-		if (!IsValid(Dungeon))
+		if (DungeonAssets.Num() > 0)
 		{
-			return false;
-		}
+			const URoomPresetPtr Dungeon = Cast<URoomPreset>(DungeonAssets[0].GetAsset());
+			if (IsValid(Dungeon))
+			{
+				return true;
+			}
+		}		
 	}
-	return true;
+	return false;
 }
 
 URoomPresetPtr FDungeonUtils::GetRoomPresetByName(const FName Name) const
@@ -119,24 +124,196 @@ URoomPresetPtr FDungeonUtils::GetRoomPresetByPath(const FName Path) const
 	return nullptr;
 }
 
+/*UGenerationSettings* FDungeonUtils::CreateSettingsFile(const FName FileDirectoryPath, EFileResultStatus& Result)
+{
+	if (FileDirectoryPath == "")
+	{
+		Result = EFileResultStatus::NONE;
+		return nullptr;
+	}
+
+	const FString AssetName = TEXT("Settings");
+	const FString Path = FileDirectoryPath.ToString();
+	const FString AssetPath = FString::Printf(TEXT("%s/%s"), *Path, *AssetName);
+	const FString PackageName = FString::Printf(TEXT("%s_Pkg"), *AssetName);
+	const FString PackagePath = FString::Printf(TEXT("%s/%s"), *Path, *PackageName);
+	const FString FullPathName = FString::Printf(TEXT("%s.%s"), *PackagePath, *AssetName);
+
+	UGenerationSettings* Object = nullptr;
+
+	if (FPackageName::DoesPackageExist(FullPathName))
+	{
+		Object = LoadSettings(*FullPathName, Result);
+		return Object;
+	}
+
+	UPackage* Package = CreatePackage(*PackagePath);
+	Object = NewObject<UGenerationSettings>(Package, *AssetName, RF_Public | RF_Standalone);
+
+	SaveAsset(Object, Result);	
+
+	Result = EFileResultStatus::CREATED;
+	return Object;
+}*/
+
+FFileReport FDungeonUtils::CreateSettingsFile(const FName FileDirectoryPath, UGenerationSettings* OutSettingsFile)
+{
+	FFileReport Report;
+
+	if (FileDirectoryPath == "")
+	{
+		return Report;
+	}
+
+	const FString AssetName = TEXT("Settings");
+	const FString Path = FileDirectoryPath.ToString();
+	const FString AssetPath = FString::Printf(TEXT("%s/%s"), *Path, *AssetName);
+	const FString PackageName = FString::Printf(TEXT("%s_Pkg"), *AssetName);
+	const FString PackagePath = FString::Printf(TEXT("%s/%s"), *Path, *PackageName);
+	const FString FullPathName = FString::Printf(TEXT("%s.%s"), *PackagePath, *AssetName);
+
+	//UGenerationSettings* Object = nullptr;
+
+	if (FPackageName::DoesPackageExist(FullPathName))
+	{
+		Report = LoadSettings(*FullPathName, OutSettingsFile);
+		//OutSettingsFile = Object;
+		return Report;
+	}
+
+	UPackage* Package = CreatePackage(*PackagePath);
+	OutSettingsFile = NewObject<UGenerationSettings>(Package, *AssetName, RF_Public | RF_Standalone);
+
+	SaveAsset(OutSettingsFile);
+
+	//OutSettingsFile = Object;
+
+	Report = FFileReport
+	{
+		ECommandStatusType::VALID,
+		EFileResultStatus::CREATED
+	};
+	return Report;
+}
+
+FFileReport FDungeonUtils::SaveAsset(UObject* Asset)
+{
+	FFileReport Report;
+
+	if (!IsValid(Asset))
+	{
+		return Report;
+	}
+
+	UPackage* Package = Asset->GetPackage();
+	const FString Filename = FPackageName::LongPackageNameToFilename(
+		Package->GetPathName(), FPackageName::GetAssetPackageExtension());
+
+	UPackage::SavePackage(Package, Asset, RF_Public | RF_Standalone, *Filename);
+	FAssetRegistryModule::AssetCreated(Asset);
+	Package->MarkPackageDirty();
+
+	//FArchive Archive;
+	//FMemoryWriter Writer = FMemoryWriter(Asset.Data);
+	//Asset->Serialize(Writer);
+	//UPackage::SavePackage(Package, Asset, RF_Public | RF_Standalone, *Filename);
+
+	Report = FFileReport
+	{
+		ECommandStatusType::VALID,
+		EFileResultStatus::SAVED
+	};
+	return Report;
+}
+
+/*UGenerationSettings* FDungeonUtils::LoadSettings(const FName FilePath, EFileResultStatus& Result) const
+{
+	const FAssetData Asset = FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(FilePath);
+	if (Asset.IsValid())
+	{
+		UGenerationSettings* Settings = Cast<UGenerationSettings>(Asset.GetAsset());
+		if (Settings)
+		{
+			Result = EFileResultStatus::LOADED;
+			return Settings;
+		}
+	}
+
+	Result = EFileResultStatus::NONE;
+	return nullptr;
+}*/
+
+FFileReport FDungeonUtils::LoadSettings(const FName FilePath, UGenerationSettings* OutSettingsFile) const
+{
+	FFileReport Report;
+
+	//LoadObject<UGenerationSettings>(nullptr, TEXT(""), TEXT(""));
+	const FAssetData Asset = FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(FilePath);
+	if (Asset.IsValid())
+	{
+		UGenerationSettings* Settings = Cast<UGenerationSettings>(Asset.GetAsset());
+		if (Settings)
+		{
+			OutSettingsFile = Settings;
+			Report = FFileReport
+			{
+				ECommandStatusType::VALID,
+				EFileResultStatus::LOADED
+			};
+			return Report;			
+		}
+	}
+
+	return Report;
+}
+
+FFileReport FDungeonUtils::DeleteAsset(UObject* Asset)
+{
+	FFileReport Report;
+
+	FString PkgName = Asset->GetPackage()->GetName();
+	bool FileNotExists = !FPackageName::DoesPackageExist(PkgName);
+	if (!IsValid(Asset) || FileNotExists)
+	{
+		return Report;
+	}
+
+	UPackage* Package = Asset->GetPackage();
+	Asset->MarkPendingKill();
+	Package->MarkPendingKill();
+	GEngine->ForceGarbageCollection(true);
+	FAssetRegistryModule::AssetDeleted(Asset);
+	FAssetRegistryModule::PackageDeleted(Package);
+
+	// FIX DELETE PROCESS
+
+	Report = FFileReport
+	{
+		ECommandStatusType::VALID,
+		EFileResultStatus::DELETED
+	};
+	return Report;
+}
+
 bool FDungeonUtils::RGCommandMakeRoom(const FString AssetName)
 {
 	if (AssetName == "")
 	{
-		UE_LOG(LogTemp, MESSAGECOLOR, TEXT("MISSING NAME FOR NEW ROOM ASSET"));
+		UE_LOG(LogTemp, Display, TEXT("THIS NAME IS NO VALID"));
 		return false;
 	}
 	if (RoomPresets.Contains(GetRoomPresetByName(*AssetName)))
 	{
-		UE_LOG(LogTemp, MESSAGECOLOR, TEXT("ASSET OF NAME %s ALREADY CREATED. PLEASE TRY WITH A DIFFERENT NAME"), *AssetName);
+		UE_LOG(LogTemp, Display, TEXT("ASSET OF NAME %s ALREADY CREATED. PLEASE TRY WITH A DIFFERENT NAME"), *AssetName);
 		return false;
 	}
+
 	const FString Path = PrefabricsPath.ToString();
 	const FString PackageName = FString::Printf(TEXT("%s_Pkg"), *AssetName);
 	const FString PackagePath = FString::Printf(TEXT("%s/%s"), *Path, *PackageName);
 	const FString FullPathName = FString::Printf(TEXT("%s.%s"), *PackagePath, *AssetName);
 
-	UPackage* Package = CreatePackage(*PackagePath); 
+	UPackage* Package = CreatePackage(*PackagePath);
 	URoomPreset* NewRoom = NewObject<URoomPreset>(Package, *AssetName, RF_Public | RF_Standalone);
 	//NewRoom->AddToRoot();
 	
@@ -154,6 +331,11 @@ bool FDungeonUtils::RGCommandMakeRoom(const FString AssetName)
 
 UDungeonData* FDungeonUtils::SaveDungeonData(const FDungeonInfo& Info)
 {
+	if (Info.State == EDungeonInfoState::NOVALID)
+	{
+		return nullptr;
+	}
+
 	const FString Path = DungeonDataPath.ToString();
 	const FString AssetName = TEXT("CurrentDungeon");
 	const FString PackageName = FString::Printf(TEXT("%s_Pkg"), *AssetName);

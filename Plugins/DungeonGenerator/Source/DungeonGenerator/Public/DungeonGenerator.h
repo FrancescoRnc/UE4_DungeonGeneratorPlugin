@@ -7,8 +7,15 @@
 #include "DungeonUtilities.h"
 #include "Modules/ModuleManager.h"
 
+DECLARE_LOG_CATEGORY_EXTERN(LogDunGenStartup,			All, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogDunGenShutdown,			All, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogDunGenBuild,				All, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogDunGenBuildError,		All, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogDunGenExecQueryFiles,	All, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogDunGenExecQueryInfo,		All, All);
 
-#define MESSAGECOLOR Display
+#define LOGCOLOR Display
+
 
 /**
 * FRoomGenerator - This class makes a new ADungeonRoom Instance,

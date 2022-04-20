@@ -17,46 +17,35 @@ enum class ECellDirection : uint8
 };
 
 
-/*struct FSchemeCell
+/**
+ * IGeneratorMethod interface
+ */
+class DUNGEONGENERATOR_API IGeneratorMethod
 {
-    FIntVector Coordinate = {0, 0, 0};
-    // 0: OK; 1: Visited; 2: Start; 4: Goal; 8: Unused;
-    int32 CellStatus = 0;
-    int32 CellType = 0;	
-    int32 Index = -1;
+public:
+
+	virtual struct FGrid Generate(const FGrid EmptyGridSample, struct FGridMakerInfo& MakerInfo) = 0;
+
+	const static int32 GetOppositeIndex(const int32 Source);
+	const static int32 GetPatternFromIndex(const int32 Index);
 };
 
-class DUNGEONGENERATOR_API FDungeonSchemeMaker
-{	
-public:
-    FDungeonSchemeMaker();
-    FDungeonSchemeMaker(const int32 Width, const int32 Height) :
-        SchemeSize{FIntVector(Width, Height, 0)}
-    {
-  		SchemeLength = SchemeSize.X * SchemeSize.Y;
-  		PrototypeScheme.Init({}, SchemeLength);
-  		for (int32 Index = 0; Index < SchemeLength; Index++)
-  		{
-  		 	PrototypeScheme[Index].Index = Index;	
-  		 	PrototypeScheme[Index].Coordinate.X = Index % SchemeSize.X;
-  		 	PrototypeScheme[Index].Coordinate.Y = Index / SchemeSize.X;			
-  		}
-    }	
-	~FDungeonSchemeMaker();
+class DUNGEONGENERATOR_API FStandardGeneratorMethod : public IGeneratorMethod
+{
+	public:
 
-	void MakeNewScheme();
-	const TArray<int32> GetScheme() const;
+	//FStandardGeneratorMethod() = delete;
+	//
+	//FStandardGeneratorMethod(const FIntVector InGridSize) :
+	//	GridSize{InGridSize} 
+	//{
+	//
+	//}
 
-private:
-	bool DeepFirstSearch(FSchemeCell& InCell);
+	virtual FGrid Generate(const FGrid EmptyGridSample, FGridMakerInfo& MakerInfo) override;
+
 	
-	FIntVector SchemeSize;
-	int32 SchemeLength;
-	TArray<int32> OutScheme;
-	TArray<FSchemeCell> CurrentScheme;
-	TArray<FSchemeCell> PrototypeScheme;
-	TArray<FSchemeCell> SchemeStack;
-};*/
+};
 
 
 const static TArray<FIntVector> Directions
@@ -68,7 +57,7 @@ const static TArray<FIntVector> Directions
 };
 
 
-struct FGridCell
+struct DUNGEONGENERATOR_API FGridCell
 {
 	FIntVector Coordinate = {0, 0, 0};
 	int32 Index = -1;	
@@ -77,7 +66,7 @@ struct FGridCell
 	
 };
 
-struct FGrid
+struct DUNGEONGENERATOR_API FGrid
 {
 	FGrid();
 	FGrid(FIntVector NewSize) :
@@ -98,8 +87,9 @@ struct FGrid
 	// This field stores the path through the Dungeon from first to last
 	TArray<FIntVector> PathTrack{};
 	TArray<TPair<int32, int32>> LinkedPairs{};
-	FIntVector StartPoint, EndPoint;
-	FIntVector Size = { 0, 0, 0 };
+	FIntVector StartPoint = { 0,0,0 };
+	FIntVector EndPoint = { 0,0,0 };
+	FIntVector Size = { 0,0,0 };
 	int32 Length = 0;
 	int32 PathLength = 0;
 
@@ -118,6 +108,35 @@ struct FGrid
 	TArray<int32> GetSchemePath();
 };
 
+
+struct DUNGEONGENERATOR_API FGridMakerInfo
+{
+	public:
+
+	FGridMakerInfo() = default;
+	FGridMakerInfo(const int32 Rooms) :
+		GridRadius{ Rooms + 1 }, RoomsCount{ Rooms }
+	{
+		const int32 Side = (GridRadius * 2) + 1;
+		Size.Y = Size.X = Side;
+		Size.Z = Side * Side;
+	}
+
+	void CheckMinMaxCoordinate(const FIntVector Coordinate);
+
+	
+
+	//private:
+
+	int32 GridRadius{ 0 };
+	int32 RoomsCount{ 0 };
+	FIntVector Size{ 0,0,0 }; // Z Value stores the Length of the Grid Array.
+
+	//FIntVector StartPoint, EndPoint;
+	FIntVector MinPoint{ 999,999,0 }, MaxPoint{ 0,0,0 };
+};
+
+
 /**
 * Class that creates the base Scheme for our new dungeon.
 * Each Grid is squared and with Odd length sides.
@@ -126,19 +145,23 @@ class DUNGEONGENERATOR_API FDungeonGridMaker
 {
 public:
 	FDungeonGridMaker();
-	FDungeonGridMaker(const int32 Rooms) :
-		GridRadius{Rooms + 1}, RoomsCount{Rooms}
+	FDungeonGridMaker(const int32 Rooms, IGeneratorMethod* InMethod) :
+		MakerInfo{FGridMakerInfo(Rooms)}, Method{InMethod}
 	{
 		if (Rooms <= 0)
 		{
 			return;
 		}
 
-		const int32 Side = (GridRadius * 2) + 1;
-		Size.Y = Size.X = Side;
-		Size.Z = Side * Side;
+		//const int32 Side = (GridRadius * 2) + 1;
+		//MakerInfo.Size.Y = MakerInfo.Size.X = Side;
+		//MakerInfo.Size.Z = Side * Side;
+		//Size.Y = Size.X = Side;
+		//Size.Z = Side * Side;
 		
-		InGrid = MakeNewGrid(Size);
+		//InGrid = MakeNewGrid(Size);
+		FGrid EmptyGrid(MakerInfo.Size);
+		InGrid = Method->Generate(EmptyGrid, MakerInfo);
 		OutGrid = CropGrid(InGrid);
 		LinkGridCells(OutGrid);
 	}
@@ -147,27 +170,27 @@ public:
 	FGrid GetGrid();
 	void DebugGrid(const FGrid FullGrid);
 	
-	const static int32 GetOppositeIndex(const int32 Source);
-	const static int32 GetPatternFromIndex(const int32 Index);
-
+	//const static int32 GetOppositeIndex(const int32 Source);
+	//const static int32 GetPatternFromIndex(const int32 Index);
 	
 	TArray<TPair<int32, int32>> GetDirectionPairs(FGrid& Grid);
 	
 private:
-	void CheckMinMaxCoordinate(const FIntVector Coordinate);
-	//FGrid MakeNewGrid2(const FIntVector GridSize);
-	FGrid MakeNewGrid(const FIntVector GridSize);
+	//void CheckMinMaxCoordinate(const FIntVector Coordinate);
+	//FGrid MakeNewGrid(const FIntVector GridSize);
 	FGrid CropGrid(const FGrid& SourceGrid);
 	void LinkGridCells(FGrid& Grid);	
 	
-	
-	int32 GridRadius{0};
-	int32 RoomsCount{0};	
-	FIntVector Size; // Z Value stores the Length of the Grid Array.
+	IGeneratorMethod* Method;
+	FGridMakerInfo MakerInfo{};
+
+	//int32 GridRadius{0};
+	//int32 RoomsCount{0};	
+	//FIntVector Size; // Z Value stores the Length of the Grid Array.
 	
 	FGrid InGrid = {};
 	FGrid OutGrid = {};
 	//FIntVector StartPoint, EndPoint;
-	FIntVector MinPoint{99,99,0}, MaxPoint{0,0,0};	
+	FIntVector MinPoint{999,999,0}, MaxPoint{0,0,0};	
 	
 };

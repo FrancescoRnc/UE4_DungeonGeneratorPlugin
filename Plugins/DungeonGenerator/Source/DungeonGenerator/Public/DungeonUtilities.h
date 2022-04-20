@@ -11,9 +11,35 @@ using URoomPresetPtr = class URoomPreset*;
 using URoomPresetRef = TSharedRef<URoomPreset>;
 
 
+enum class ECommandStatusType : uint8
+{
+	ERROR		= 0,
+	VALID		= 1,
+	WARNING		= 2,
+	MAX			= 3
+};
+
+enum class EFileResultStatus : uint8
+{
+	NONE		= 0,
+	CREATED		= 1,
+	LOADED		= 2,
+	MODIFIED	= 3,
+	SAVED		= 4,
+	DELETED		= 5,
+	MAX			= 6
+};
+
+struct FFileReport
+{
+	ECommandStatusType CommandStatus	= ECommandStatusType::ERROR;
+	EFileResultStatus ResultStatus		= EFileResultStatus::NONE;
+};
+
+
 /**
-* IDungeonBuilder Interface
-*/
+ * IDungeonBuilder Interface
+ */
 class IDungeonBuilder
 {
 public:
@@ -27,7 +53,7 @@ public:
 
 
 /**
- * 
+ * FDungeonUtils Class
  */
 class FDungeonUtils
 {
@@ -37,6 +63,8 @@ public:
 	FName PrefabricsPath = TEXT("/Game/Prefabrics");
 	FName DungeonDataPath = TEXT("/Game/DungeonData");
 	int32 DungeonRoomsCount = 0;
+
+	//UGenerationSettings* CurrentSettings = nullptr;
 
 	TMap<int32, URoomPresetPtr> RoomPresetsMap{};
 	TArray<URoomPresetPtr> RoomPresets{};
@@ -80,11 +108,20 @@ public:
 	{
 		if (RoomPresets.Num() != RoomPresetsMap.Num())
 		{
-			UE_LOG(LogTemp, Error, TEXT("ERROR: Presets Count between Array and map containers is not equal!"));
+			UE_LOG(LogTemp, Error, TEXT("ERROR: Presets Count between Array and Map containers is not equal!"));
 		}
 		return RoomPresets.Num();
 	}
-	
+
+	//class UGenerationSettings* CreateSettingsFile(const FName FileDirectoryPath, EFileResultStatus& Result);	
+	//UGenerationSettings* LoadSettings(const FName FilePath, EFileResultStatus& Result) const;
+
+	FFileReport CreateSettingsFile(const FName FileDirectoryPath, class UGenerationSettings* OutSettingsFile);
+	FFileReport LoadSettings(const FName FilePath, UGenerationSettings* OutSettingsFile) const;
+
+	FFileReport SaveAsset(UObject* Asset);
+	FFileReport DeleteAsset(UObject* Asset);
+
 
 private:	
 	TMap<FName, UPackage*> PresetPackages;
