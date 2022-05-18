@@ -51,21 +51,21 @@ class DUNGEONGENERATOR_API UDungeonData : public UObject
 
 	// Grid Information
 	UPROPERTY(VisibleAnywhere)
-	FIntVector GridSize;
-
-	UPROPERTY(VisibleAnywhere)
-	int32 PathLength;	
-
-	UPROPERTY(VisibleAnywhere)
 	TArray<int32> GridScheme;
 	
+	UPROPERTY(VisibleAnywhere)
+	int32 PathLength;
+
+	UPROPERTY(VisibleAnywhere)
+	FIntVector GridSize;
+
 	
 	// Rooms Information
 	UPROPERTY(VisibleAnywhere)
 	TArray<int32> RoomsPresetID;
 
 	UPROPERTY(VisibleAnywhere)
-	TArray<FName> RoomsPresetPaths;
+	TArray<FString> RoomsPresetPaths;
 	
 	UPROPERTY(VisibleAnywhere)
 	TArray<FIntVector> RoomsCoordinate;
@@ -87,4 +87,6 @@ class DUNGEONGENERATOR_API UDungeonData : public UObject
 	
 	UFUNCTION(BlueprintCallable)
 	void Reset();
+
+	void Serialize(FArchive& Ar) override;
 };

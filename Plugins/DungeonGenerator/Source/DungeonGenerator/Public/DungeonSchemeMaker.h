@@ -44,7 +44,11 @@ class DUNGEONGENERATOR_API FStandardGeneratorMethod : public IGeneratorMethod
 
 	virtual FGrid Generate(const FGrid EmptyGridSample, FGridMakerInfo& MakerInfo) override;
 
-	
+	//FORCEINLINE void GetMinMaxCoordinates(const FGrid& Grid, FIntVector& OutMin, FIntVector& OutMax) const
+	//{
+	//	OutMin = ;
+	//	OutMax = ;
+	//}
 };
 
 
@@ -87,9 +91,11 @@ struct DUNGEONGENERATOR_API FGrid
 	// This field stores the path through the Dungeon from first to last
 	TArray<FIntVector> PathTrack{};
 	TArray<TPair<int32, int32>> LinkedPairs{};
-	FIntVector StartPoint = { 0,0,0 };
-	FIntVector EndPoint = { 0,0,0 };
-	FIntVector Size = { 0,0,0 };
+	FIntVector StartPoint	{ 0,0,0 };
+	FIntVector EndPoint		{ 0,0,0 };
+	FIntVector Size			{ 0,0,0 };
+	FIntVector MinPoint		{ 999,999,0 };
+	FIntVector MaxPoint		{ 0, 0, 0 };
 	int32 Length = 0;
 	int32 PathLength = 0;
 
@@ -106,6 +112,8 @@ struct DUNGEONGENERATOR_API FGrid
 
 	TArray<int32> GetScheme();
 	TArray<int32> GetSchemePath();
+
+	void CheckMinMaxCoordinate(const FIntVector Coordinate);
 };
 
 
@@ -122,7 +130,7 @@ struct DUNGEONGENERATOR_API FGridMakerInfo
 		Size.Z = Side * Side;
 	}
 
-	void CheckMinMaxCoordinate(const FIntVector Coordinate);
+	//void CheckMinMaxCoordinate(const FIntVector Coordinate);
 
 	
 
@@ -162,6 +170,7 @@ public:
 		//InGrid = MakeNewGrid(Size);
 		FGrid EmptyGrid(MakerInfo.Size);
 		InGrid = Method->Generate(EmptyGrid, MakerInfo);
+
 		OutGrid = CropGrid(InGrid);
 		LinkGridCells(OutGrid);
 	}

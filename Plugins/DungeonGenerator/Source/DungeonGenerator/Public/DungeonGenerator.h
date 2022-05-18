@@ -17,6 +17,7 @@ DECLARE_LOG_CATEGORY_EXTERN(LogDunGenExecQueryInfo,		All, All);
 #define LOGCOLOR Display
 
 
+
 /**
 * FRoomGenerator - This class makes a new ADungeonRoom Instance,
 * with 
@@ -96,13 +97,10 @@ public:
 
 private:	
 	const FName DungeonGeneratorTabName = TEXT("Dungeon Generator");
-    const int32 DGSpacerSize = 10;
-    const int32 HPadding = 10;
-    const int32 VPadding = 20;
 	
 	//TSharedPtr<FDungeonGenerator> DungeonGenerator;
 	//TSharedPtr<FRoomGenerator> RoomGenerator;
-	TSharedPtr<FDungeonUtils> DungeonUtils;
+	TSharedPtr<FDungeonUtilities> DungeonUtils;
 	
 	FDungeonInfo CurrentDungeonInfo{};
 	UDungeonData* CurrentDungeonData = nullptr;

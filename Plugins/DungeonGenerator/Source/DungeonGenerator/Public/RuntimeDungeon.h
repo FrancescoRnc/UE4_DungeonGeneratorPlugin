@@ -17,28 +17,38 @@ public:
 	// Sets default values for this actor's properties
 	ARuntimeDungeon();
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-	UInstancedStaticMeshComponent* RoomInstancesComponent = nullptr;
-
+	//UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	//UInstancedStaticMeshComponent* RoomInstancesComponent = nullptr;
+	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UInstancedStaticMeshComponent* DoorInstancesComponent = nullptr;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TMap<int32, UInstancedStaticMeshComponent*> FloorMeshInstances{};
+
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	TMap<int32, UInstancedStaticMeshComponent*> WallsMeshInstances{};
 	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+
+	void AddNewRoomInstanceMeshComponent(const int32 PresetID);
+	void SpawnNewRoom(const int32 PresetID, const FVector Position);
+
+
 public:	
 	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	//virtual void Tick(float DeltaTime) override;
 
 	
 	virtual void BuildDungeon(const int32 RoomsCount) override;
 	virtual void BuildRooms() override;
 	virtual void BuildDoors() override;
 	
-	//UFUNCTION(BlueprintCallable)
-	//void Build();
+	UFUNCTION(BlueprintCallable)
+	void Build();
 
 	private:
 	TSoftObjectPtr<UDungeonData> DungeonDataRef;

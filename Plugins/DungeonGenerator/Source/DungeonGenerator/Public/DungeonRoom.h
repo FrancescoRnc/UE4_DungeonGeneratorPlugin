@@ -28,6 +28,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UStaticMeshComponent* WallsMeshComponent;
 
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TArray<ADoor*> DoorsRef;
 	
@@ -37,6 +38,7 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
 
 public:	
 	// Called every frame

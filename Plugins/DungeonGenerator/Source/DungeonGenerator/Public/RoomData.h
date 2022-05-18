@@ -2,12 +2,15 @@
 
 #pragma once
 
+#include "AssetTypeActions_Base.h"
+#include "AssetTypeCategories.h"
 #include "CoreMinimal.h"
 #include "Door.h"
 #include "UObject/NoExportTypes.h"
 #include "RoomData.generated.h"
 
 
+static EAssetTypeCategories::Type DungeonAssetTypeCategory;
 
 
 /**
@@ -21,7 +24,7 @@ struct FRoomInfo
 	TArray<FDoorInfo> DoorsInfo{};
 	int32 PresetID = -1;
 	FName PresetName = NAME_None;
-	FName PresetPath = NAME_None;
+	FString PresetPath = TEXT("");
 };
 
 
@@ -44,14 +47,87 @@ class DUNGEONGENERATOR_API URoomPreset : public UObject
 	FString RoomName;
 	
 	UPROPERTY(EditAnywhere)
-	UStaticMesh* FloorMesh;
+	UStaticMesh* FloorMesh = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	UStaticMesh* WallsMesh;
+	UStaticMesh* WallsMesh = nullptr;
 
 	UPROPERTY(EditAnywhere)
-	UStaticMesh* DoorsMesh;
+	UStaticMesh* DoorsMesh = nullptr;
 
 	UFUNCTION(BlueprintCallable)
 	void DoThings();
+
+	void Serialize(FArchive& Ar) override;
+};
+
+
+class DUNGEONGENERATOR_API FRoomPresetAssetTypeAction : public FAssetTypeActions_Base
+{
+	public:
+
+	FRoomPresetAssetTypeAction();
+
+	FRoomPresetAssetTypeAction(EAssetTypeCategories::Type Type);
+
+
+	FORCEINLINE uint32 GetCategories() override
+	{
+		return EAssetTypeCategories::Blueprint;
+	}
+
+	FORCEINLINE FText GetName() const override
+	{
+		return FText::FromString(TEXT("Room Preset"));
+	}
+
+	FORCEINLINE UClass* GetSupportedClass() const override
+	{
+		return URoomPreset::StaticClass();
+	}
+
+	FORCEINLINE FColor GetTypeColor() const override
+	{
+		return FColor::Red;
+	}
+
+
+	//private:
+
+	//static EAssetTypeCategories::Type AssetTypeCategory;
+};
+
+
+UCLASS()
+class DUNGEONGENERATOR_API URoomPresetFactory : public UFactory
+{
+	GENERATED_BODY()
+
+	public:
+
+	URoomPresetFactory();
+
+	UObject* FactoryCreateNew
+	(
+		UClass* InClass,
+		UObject* InParent,
+		FName InName,
+		EObjectFlags Flags,
+		UObject* Context,
+		FFeedbackContext* Warn
+	);
+
+	FORCEINLINE FText GetDisplayName() const override
+	{
+		return FText::FromString(TEXT("Room Preset"));
+	};
+
+	FORCEINLINE uint32 GetMenuCategories() const override
+	{
+		return EAssetTypeCategories::Blueprint;
+	};
+
+	private:
+
+	EAssetTypeCategories::Type AssetTypeCategory = EAssetTypeCategories::None;
 };

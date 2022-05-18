@@ -45,7 +45,7 @@ class FMockGeneratorMethod : public IGeneratorMethod
 		NewGrid.StartPoint = GridCenter;
 		PathTrack.Add(NewGrid.StartPoint);
 		NewGrid[NextGridIndex].PathOrder = 1;
-		MakerInfo.CheckMinMaxCoordinate(GridCenter);
+		NewGrid.CheckMinMaxCoordinate(GridCenter);
 
 		// Now we are forcing the next Cell to go Up, by excluding Left, right and Down later
 
@@ -60,7 +60,7 @@ class FMockGeneratorMethod : public IGeneratorMethod
 			NextPatternIndex = NewPatternIndex;
 
 			NextCoordinate = NewCoordinate;
-			MakerInfo.CheckMinMaxCoordinate(NextCoordinate);
+			NewGrid.CheckMinMaxCoordinate(NextCoordinate);
 			NextGridIndex = NextCoordinate.X + (NextCoordinate.Y * MakerInfo.Size.X);
 
 			PathTrack.Add(NextCoordinate);
@@ -77,6 +77,11 @@ class FMockGeneratorMethod : public IGeneratorMethod
 
 		return NewGrid;
 	}
+};
+
+class FMemoryTestArchive : FMemoryArchive
+{
+
 };
 
 
@@ -250,7 +255,7 @@ bool FGeneratorSettingFileLoad::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Settings File should not be Null after reload"), ReSettings);
 	TestEqual(TEXT("Settings File Result after Load should be LOADED"), LoadReport.ResultStatus, EFileResultStatus::LOADED);
 	TestEqual(TEXT("Reloaded File should have Initial Preset Files Count saved equal to 2"), ReSettings->InitialPresetFilesCount, 2);
-	TestEqual(TEXT("Reloaded File should have Dungeon Data File Path saved equal to /DungeonGenerator/Test/Dungeon"), ReSettings->DungeonDataFolderPath.ToString(), TEXT("/DungeonGenerator/Test/Dungeon"));
+	TestEqual(TEXT("Reloaded File should have Dungeon Data File Path saved equal to /DungeonGenerator/Test/Dungeon"), ReSettings->DungeonDataFolderPath, TEXT("/DungeonGenerator/Test/Dungeon"));
 
 	DungeonUtils->DeleteAsset(Settings);
 

@@ -30,7 +30,7 @@ FGrid FStandardGeneratorMethod::Generate(const FGrid EmptyGridSample, FGridMaker
 	NewGrid.StartPoint = GridCenter;
 	PathTrack.Add(NewGrid.StartPoint);
 	NewGrid[NextGridIndex].PathOrder = 1;
-	MakerInfo.CheckMinMaxCoordinate(GridCenter);
+	NewGrid.CheckMinMaxCoordinate(GridCenter);
 
 	// Now we are forcing the next Cell to go Up, by excluding Left, right and Down later
 	ExcludedDirections = { 1, 3 };
@@ -73,7 +73,7 @@ FGrid FStandardGeneratorMethod::Generate(const FGrid EmptyGridSample, FGridMaker
 		ExcludedDirections.Empty();
 
 		NextCoordinate = NewCoordinate;
-		MakerInfo.CheckMinMaxCoordinate(NextCoordinate);
+		NewGrid.CheckMinMaxCoordinate(NextCoordinate);
 		NextGridIndex = NextCoordinate.X + (NextCoordinate.Y * MakerInfo.Size.X);
 
 		PathTrack.Add(NextCoordinate);
@@ -102,9 +102,8 @@ FGrid::~FGrid()
 {
 	Cells.Empty();
 	PathTrack.Empty();
-	//CellIndexLinks.Empty();
 	Size = {0,0,0};
-	Length = PathLength = 0;
+	Length = PathLength = 0;	
 }
 
 
@@ -129,6 +128,18 @@ TArray<int32> FGrid::GetSchemePath()
 	}
 	return Scheme;
 }
+
+void FGrid::CheckMinMaxCoordinate(const FIntVector Coordinate)
+{
+	// MinPoint
+	MinPoint.X = FMath::Min(MinPoint.X, Coordinate.X);
+	MinPoint.Y = FMath::Min(MinPoint.Y, Coordinate.Y);
+
+	// MaxPoint
+	MaxPoint.X = FMath::Max(MaxPoint.X, Coordinate.X);
+	MaxPoint.Y = FMath::Max(MaxPoint.Y, Coordinate.Y);
+}
+
 
 // Second Implementation
 FDungeonGridMaker::FDungeonGridMaker()
@@ -305,8 +316,8 @@ FGrid FDungeonGridMaker::CropGrid(const FGrid& SourceGrid)
 {	
 	const FIntVector NewSize =
 	{
-		(MaxPoint.X - MinPoint.X) + 1,
-		(MaxPoint.Y - MinPoint.Y) + 1,
+		(SourceGrid.MaxPoint.X - SourceGrid.MinPoint.X) + 1,
+		(SourceGrid.MaxPoint.Y - SourceGrid.MinPoint.Y) + 1,
 		0
 	};
 	
@@ -316,13 +327,13 @@ FGrid FDungeonGridMaker::CropGrid(const FGrid& SourceGrid)
 	
 	for(int32 Index = 0; Index < Crop.PathLength; Index++)
 	{
-		const FIntVector CropCoords = SourceGrid.PathTrack[Index] - MinPoint;
+		const FIntVector CropCoords = SourceGrid.PathTrack[Index] - SourceGrid.MinPoint;
 		const int32 CropIndex = CropCoords.X + (CropCoords.Y * NewSize.X);
 		const int32 GridIndex = SourceGrid.PathTrack[Index].X +
 								(SourceGrid.PathTrack[Index].Y * MakerInfo.Size.X);
 		Crop[CropIndex].PathOrder = SourceGrid.Cells[GridIndex].PathOrder;
 		
-		Crop.PathTrack[Index] = SourceGrid.PathTrack[Index] - MinPoint;
+		Crop.PathTrack[Index] = SourceGrid.PathTrack[Index] - SourceGrid.MinPoint;
 	}
 
 	Crop.StartPoint = Crop.PathTrack[0];
@@ -363,15 +374,13 @@ void FDungeonGridMaker::DebugGrid(const FGrid FullGrid)
 
 
 
-
+//void FGridMakerInfo::CheckMinMaxCoordinate(const FIntVector Coordinate)
+//{
+//	// MinPoint
+//	MinPoint.X = FMath::Min(MinPoint.X, Coordinate.X);
+//	MinPoint.Y = FMath::Min(MinPoint.Y, Coordinate.Y);
 //
-void FGridMakerInfo::CheckMinMaxCoordinate(const FIntVector Coordinate)
-{
-	// MinPoint
-	MinPoint.X = FMath::Min(MinPoint.X, Coordinate.X);
-	MinPoint.Y = FMath::Min(MinPoint.Y, Coordinate.Y);
-
-	// MaxPoint
-	MaxPoint.X = FMath::Max(MaxPoint.X, Coordinate.X);
-	MaxPoint.Y = FMath::Max(MaxPoint.Y, Coordinate.Y);
-}
+//	// MaxPoint
+//	MaxPoint.X = FMath::Max(MaxPoint.X, Coordinate.X);
+//	MaxPoint.Y = FMath::Max(MaxPoint.Y, Coordinate.Y);
+//}

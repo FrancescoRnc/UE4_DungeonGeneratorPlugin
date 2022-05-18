@@ -2,11 +2,15 @@
 
 #include "DungeonGenerator.h"
 #include "AssetRegistry/AssetRegistryModule.h"
+#include "AssetToolsModule.h"
+#include "IAssetTypeActions.h"
 #include "DungeonData.h"
 #include "DungeonRoom.h"
 #include "DungeonSchemeMaker.h"
 #include "Editor.h"
 #include "Engine/Selection.h"
+#include "RoomData.h"
+#include "SAssetDropTarget.h"
 #include "SRoomSelectorCombo.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SEditableTextBox.h"
@@ -127,7 +131,7 @@ void FDungeonGenerator::BuildDungeon(const int32 RoomsCount)
 
 	UE_LOG(LogDunGenBuild, LOGCOLOR, TEXT("Building Dungeon..."));
 
-	TSharedPtr<FStandardGeneratorMethod> Method;
+	TSharedPtr<FStandardGeneratorMethod> Method = MakeShared<FStandardGeneratorMethod>();
 	FDungeonGridMaker DungeonGridMaker(RoomsCount, Method.Get());
 
 	FGrid Grid = DungeonGridMaker.GetGrid();
@@ -171,11 +175,16 @@ void FDungeonGenerator::BuildRooms()
 	for (int32 Index = 0; Index < Length; Index++)
 	{	
 		FRoomInfo Room;
-		if (FDungeonUtils::Get()->GetPresetsCount() > 0)
+		const int32 PresetsCount = FDungeonUtilities::Get()->GetPresetFilesCount();
+		if (PresetsCount > 0)
+		//if (FDungeonUtilities::Get()->GetPresetsCount() > 0)
 		{
-			const int32 RandomPresetsMax = FDungeonUtils::Get()->GetPresetsCount() - 1;
+			const TArray<URoomPreset*> PresetsArray = FDungeonUtilities::Get()->GetPresetsArray();
+			//const int32 RandomPresetsMax = FDungeonUtilities::Get()->GetPresetsCount() - 1;
+			const int32 RandomPresetsMax = PresetsCount - 1;
 			const int32 RandomPresetIndex = Index == 0 ? 0 : FMath::RandRange(1, RandomPresetsMax);
-			const URoomPresetPtr RandomPreset = FDungeonUtils::Get()->GetRoomPresets()[RandomPresetIndex];
+			//const URoomPresetPtr RandomPreset = FDungeonUtilities::Get()->GetRoomPresets()[RandomPresetIndex];
+			const URoomPresetPtr RandomPreset = PresetsArray[RandomPresetIndex];
 			Room.PresetPath = *RandomPreset->GetPathName();
 		}
 
@@ -303,24 +312,28 @@ TArray<ADoor*> FRuntimeDungeonGenerator::GetDoors()
 // FDungeonGeneratorModule
 void FDungeonGeneratorModule::StartupModule()
 {
-	DungeonUtils		= MakeShared<FDungeonUtils>();
+	DungeonUtils = MakeShared<FDungeonUtilities>();
+
+
+	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+	DungeonAssetTypeCategory = AssetTools.RegisterAdvancedAssetCategory(FName(TEXT("Dungeon Elements")), LOCTEXT("DungeonElementsText", "Dungeon Elements"));
+	AssetTools.RegisterAssetTypeActions(MakeShareable(new FRoomPresetAssetTypeAction()));
+
+	DungeonUtils->CreateGenerationSettings();
 
 	FAssetRegistryModule::GetRegistry().OnFilesLoaded()
-		.AddRaw(DungeonUtils.Get(), &FDungeonUtils::GetPresetsOnLoad);
+		.AddRaw(DungeonUtils.Get(), &FDungeonUtilities::GetPresetsOnLoad);
 	FAssetRegistryModule::GetRegistry().OnInMemoryAssetDeleted()
 		.AddLambda([this](UObject* Object)
     {    	
     	if (const URoomPresetPtr Preset = Cast<URoomPreset>(Object))
     	{
-    		DungeonUtils.Get()->DeleteAssetReference(Preset);
+    		//DungeonUtils.Get()->DeleteAssetReference(Preset);
+			DungeonUtils.Get()->DeletePresetReference(Preset);
     		UE_LOG(LogDunGenStartup, LOGCOLOR, TEXT("In Memory Asset Deleted: %s"), *Object->GetName());
     	}    	
     });
 
-
-	
-	
-	
 	const TSharedPtr<FGlobalTabmanager> TabManager = FGlobalTabmanager::Get();
 	FTabSpawnerEntry SpawnerEntry = TabManager->RegisterNomadTabSpawner(DungeonGeneratorTabName,
 		FOnSpawnTab::CreateRaw(this, &FDungeonGeneratorModule::SpawnNomadTab));
@@ -333,6 +346,8 @@ void FDungeonGeneratorModule::StartupModule()
 
 void FDungeonGeneratorModule::ShutdownModule()
 {
+	//DungeonUtils->SaveGenerationSettings();
+
 	const TSharedPtr<FGlobalTabmanager> TabManager = FGlobalTabmanager::Get();
 	TabManager->UnregisterNomadTabSpawner(DungeonGeneratorTabName);
 	
@@ -346,12 +361,15 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 	if (CmdAsString == "queryfiles")
 	{
 		UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Number of Asset Files: %d | Path: %s"),
-			DungeonUtils->GetPresetsCount(), *DungeonUtils->PrefabricsPath.ToString());
-		for (const URoomPresetPtr Data : DungeonUtils->GetRoomPresets())
+			DungeonUtils->GetPresetFilesCount(), *DungeonUtils->GetGenerationSettings()->RoomPresetFolderPath);
+		//for (const URoomPresetPtr Data : DungeonUtils->GetRoomPresets())
+		for (const TPair<int32, TSoftObjectPtr<URoomPreset>> Data : DungeonUtils->GetPresets())
 		{
-			UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Asset File: %s"), *Data->GetName());
+			FString AssetName = Data.Value->GetName();
+			//UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Asset File: %s"), *Data->GetName());
+			UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Asset File: %s"), *AssetName);
 		}
-	 	UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Scan status: %d"), DungeonUtils->RescanAssetReferences());
+	 	//UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Scan status: %d"), DungeonUtils->RescanAssetReferences());
 		
 		return true;
 	}
@@ -372,7 +390,8 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 			const FRoomInfo CurrentRoom = CurrentDungeonInfo.RoomsInfo[Index];
 			
 			
-			const URoomPresetPtr GetPreset = DungeonUtils->GetRoomPresetByPath(CurrentRoom.PresetPath);
+			//const URoomPresetPtr GetPreset = DungeonUtils->GetRoomPresetByPath(CurrentRoom.PresetPath);
+			const URoomPresetPtr GetPreset = DungeonUtils->GetPresetByID(CurrentRoom.PresetID);
 			UE_LOG(LogTemp, Display, TEXT("-|- Room of index %d Preset Used:			%s"),
 				Index, *GetPreset->GetName());
 
@@ -430,15 +449,18 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 // Commands
 FReply FDungeonGeneratorModule::DGCommandGenerate()
 {
+	//DungeonUtils->GetDungeonDataAsset();
 	CurrentDungeonInfo.Reset();
 	
 	FDungeonGenerator DungeonGenerator;
-	DungeonGenerator.BuildDungeon(FDungeonUtils::Get()->DungeonRoomsCount);
+	//DungeonGenerator.BuildDungeon(DungeonUtils->CurrentSettings->InitialPresetFilesCount);
+	DungeonGenerator.BuildDungeon(DungeonUtils->GetPresetFilesCount());
 	DungeonGenerator.BuildRooms();
 	DungeonGenerator.BuildDoors();
 	CurrentDungeonInfo = DungeonGenerator.GetDungeonInfo();
 
-	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);	
+	//CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
+	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
 
 	UE_LOG(LogTemp, LOGCOLOR, TEXT("A NEW DUNGEON HAS BEEN GENERATED!"));
 	
@@ -493,7 +515,8 @@ FReply FDungeonGeneratorModule::DGCommandPreview()
 	RoomsRef.Empty();
 	DoorsRef.Empty();
 
-	const UDungeonData* DungeonData = DungeonUtils->GetDungeonDataAsset();
+	//const UDungeonData* DungeonData = DungeonUtils->GetDungeonDataAsset();
+	const UDungeonData* DungeonData = DungeonUtils->GetDungeonData();
 
 	const int32 RoomsCount = DungeonData->PathLength;
 	RoomsRef.Init(nullptr, RoomsCount);
@@ -556,7 +579,7 @@ FReply FDungeonGeneratorModule::DGCommandRoomPreview()
 		SelectedRoom = World->SpawnActor<ADungeonRoom>(ADungeonRoom::StaticClass(), FTransform::Identity);
 	}
 
-	const URoomPresetPtr SelectedPreset = FDungeonUtils::Get()->GetSelectedPreset();
+	const URoomPresetPtr SelectedPreset = FDungeonUtilities::Get()->GetSelectedPreset();
 	if (SelectedPreset)
 	{
 		FRoomInfo Info;
@@ -576,13 +599,13 @@ void FDungeonGeneratorModule::RGCommandMakeRoom(const FText& InText, ETextCommit
 {
 	if (InCommitType == ETextCommit::OnEnter)
 	{
-		DungeonUtils->RGCommandMakeRoom(InText.ToString());
+		//DungeonUtils->RGCommandMakeRoom(InText.ToString());
 	}
 }
 
 
 TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs& TabSpawnArgs)
-{		
+{
 	FToolBarBuilder ToolbarBuilder(MakeShared<FUICommandList>(), FMultiBoxCustomization::None);
 
 	const FText DGenerateText = LOCTEXT("ToolbarGenerate", "Generate");
@@ -633,14 +656,31 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 	
 	const TSharedRef<SWidget> Toolbar = ToolbarBuilder.MakeWidget();	
 
-	const TSharedRef<SRoomSelectorCombo<URoomPresetPtr>> RoomSelectorCombo =
-		SNew(SRoomSelectorCombo<URoomPresetPtr>).Source(&DungeonUtils->RoomPresets);
-	RoomSelectorCombo->OnOptionSelected.BindLambda([this](const URoomPresetPtr Preset)
-	{
-		DungeonUtils->SelectedPreset = Preset;
-	});
+	//const TSharedRef<SRoomSelectorCombo<FString>> RoomSelectorCombo =
+	//	SNew(SRoomSelectorCombo<FString>).Source(DungeonUtils->GetPresetPaths());
+	//RoomSelectorCombo->OnOptionSelected.BindLambda([this](const FString PresetPath)
+	//{
+	//	FAssetData Asset = FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(*PresetPath);
+	//
+	//	DungeonUtils->SelectedPreset = Cast<URoomPreset>(Asset.GetAsset());
+	//});
+	const TSharedRef<SAssetDropTarget> AssetSearchBox =
+		SNew(SAssetDropTarget).OnAssetDropped_Lambda([this](UObject* Selection)
+		{
+			URoomPreset* CastObject = Cast<URoomPreset>(Selection);
+			if (CastObject)
+			{
+				DungeonUtils->SelectedPreset = Cast<URoomPreset>(Selection);
+			}
+		});
+		//.OnAssetDropped_Raw(DungeonUtils, &DungeonUtilities::SetSelectedPreset);
 
-	
+
+	const int32 DGSpacerSize = 10;
+	const int32 HPadding = 10;
+	const int32 VPadding = 10;
+
+
 	return SNew(SDockTab).TabRole(ETabRole::NomadTab)
 	[
 		SNew(SVerticalBox)
@@ -651,8 +691,21 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 		]
 
 		// Menu
+		+ SVerticalBox::Slot().AutoHeight()
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(0, (VPadding * 2) , 0, 0)
+		[
+			SNew(STextBlock).Text(LOCTEXT("ConstructYourOwnDungeonHereText", "Construct your own Dungeon here:"))
+		]
+		+ SVerticalBox::Slot().AutoHeight()
+		.HAlign(HAlign_Center)
+		.Padding(0, 0, 0, 0)
+		[
+			SNew(SSpacer).Size(10)
+		]
 		+SVerticalBox::Slot().AutoHeight()
-		//.Padding(0,VPadding,0,0)
+		//.Padding(0, 0, 0, 0)
 		[
 			SNew(SBox)
 			.HAlign(HAlign_Left)
@@ -660,7 +713,7 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 			[
 				SNew(SHorizontalBox)
 				// Dungeon
-				+SHorizontalBox::Slot().AutoWidth()
+				+SHorizontalBox::Slot()//.AutoWidth()
 				.Padding(HPadding, 0, HPadding, 0)
 				[
 					SNew(SVerticalBox)				
@@ -670,18 +723,22 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					.Padding(0,VPadding,0,0)
 					[
 						SNew(SHorizontalBox)
-						+SHorizontalBox::Slot().AutoWidth()
+						+ SHorizontalBox::Slot().AutoWidth()
 						.Padding(0,0,HPadding,0)
 						[
-							SNew(STextBlock).Text(LOCTEXT("DungeonFilePathText", "Dungeon File Path:"))
+							SNew(STextBlock).Text(LOCTEXT("SetDungeonFilePathText", "Set Dungeon File Path:"))
 						]
-						+SHorizontalBox::Slot().HAlign(HAlign_Fill)
-						.Padding(0,0,0,0)
+						+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Fill)
+						//.Padding(0, 0, 0, 0)
 						[
 							SNew(SEditableTextBox).HintText(LOCTEXT("PathText", "Path"))
 							.OnTextCommitted_Lambda([this](const FText& InText, ETextCommit::Type InCommitType)
 							{
-								DungeonUtils->DungeonDataPath = *InText.ToString();
+								//DungeonUtils->DungeonDataPath = *InText.ToString();
+								//DungeonUtils->CurrentSettings->DungeonDataFolderPath = *InText.ToString();
+								DungeonUtils->SetDungeonDataPath(*InText.ToString());
+								DungeonUtils->SaveGenerationSettings();
 							})
 						]
 					]
@@ -691,24 +748,28 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					.Padding(0,VPadding,0,0)
 					[
 						SNew(SHorizontalBox)
-						+SHorizontalBox::Slot().AutoWidth()
+						+ SHorizontalBox::Slot().AutoWidth()
 						.Padding(0,0,HPadding,0)
 						[
-							SNew(STextBlock).Text(LOCTEXT("SetRoomsCount", "Dungeon Rooms Count:"))
+							SNew(STextBlock).Text(LOCTEXT("SetRoomsCount", "Set Dungeon Rooms Count:"))
 						]
-						+SHorizontalBox::Slot().HAlign(HAlign_Fill)
-						.Padding(0,0,0,0)
+						+ SHorizontalBox::Slot().VAlign(VAlign_Center).HAlign(HAlign_Left)
+						//.Padding(0, 0, 0, 0)
 						[
 							SNew(SEditableTextBox).HintText(LOCTEXT("CountText", "Count"))
 							.OnTextCommitted_Lambda([this](const FText& InText, ETextCommit::Type InCommitType)
 							{
-								DungeonUtils->DungeonRoomsCount = FCString::Atoi(*InText.ToString());
+								//DungeonUtils->DungeonRoomsCount = FCString::Atoi(*InText.ToString());
+								//DungeonUtils->CurrentSettings->InitialRoomsCount = FCString::Atoi(*InText.ToString());
+								DungeonUtils->SetDungeonRoomsCount(FCString::Atoi(*InText.ToString()));
+								DungeonUtils->SaveGenerationSettings();
 							})
 						]
 					]
+					
 				]
 				// Room
-				+SHorizontalBox::Slot().AutoWidth()
+				/* + SHorizontalBox::Slot().AutoWidth()
 				.Padding(HPadding, 0, HPadding, 0)
 				[
 					SNew(SVerticalBox)
@@ -716,19 +777,20 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					+SVerticalBox::Slot().AutoHeight()
 					.Padding(0,VPadding,0,0)
 					[
-						SNew(SHorizontalBox)
-						+SHorizontalBox::Slot().AutoWidth()
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
 						.Padding(0,0,HPadding,0)
 						[
 							SNew(STextBlock).Text(LOCTEXT("PresetFilesPath", "Preset Files Path:"))
 						]
-						+SHorizontalBox::Slot().HAlign(HAlign_Fill)
-						.Padding(0,0,0,0)
+						+ SVerticalBox::Slot().VAlign(VAlign_Fill)
+						.Padding(0, VPadding, 0, 0)
 						[
 							SNew(SEditableTextBox).HintText(LOCTEXT("PathText", "Path"))
 							.OnTextCommitted_Lambda([this](const FText& InText, ETextCommit::Type InCommitType)
 							{
-								DungeonUtils->PrefabricsPath = *InText.ToString();
+								//DungeonUtils->PrefabricsPath = *InText.ToString();
+								DungeonUtils->CurrentSettings->PresetFolderPath = *InText.ToString();
 							})
 						]
 					]
@@ -737,14 +799,14 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					+SVerticalBox::Slot().AutoHeight()
 					.Padding(0,VPadding,0,0)
 					[
-						SNew(SHorizontalBox)
-            	        +SHorizontalBox::Slot().AutoWidth()
+						SNew(SVerticalBox)
+            	        + SVerticalBox::Slot().AutoHeight()
             	        .Padding(0,0,HPadding,0)
             	        [
             	        	SNew(STextBlock).Text(LOCTEXT("MakeRoomCommandTitle", "New File:"))
             	        ]
-            	        +SHorizontalBox::Slot().HAlign(HAlign_Fill)
-            	        .Padding(0,0,0,0)
+            	        + SVerticalBox::Slot().VAlign(VAlign_Fill)
+            	        .Padding(0, VPadding, 0, 0)
             	        [
             	        	SNew(SEditableTextBox).HintText(LOCTEXT("NewFileNameText", "New File Name"))
             	        	.OnTextCommitted_Raw(this, &FDungeonGeneratorModule::RGCommandMakeRoom)
@@ -755,15 +817,25 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					+SVerticalBox::Slot().AutoHeight()//.HAlign(HAlign_Left)
 					.Padding(0,VPadding,0,0)
 					[
-						RoomSelectorCombo
+						SNew(SVerticalBox)
+						+ SVerticalBox::Slot().AutoHeight()
+						[
+							SNew(STextBlock).Text(LOCTEXT("SelectPresetFile", "Select Preset:"))
+						]
+						+ SVerticalBox::Slot().VAlign(VAlign_Fill)
+						.Padding(0, VPadding, 0, 0)
+						[
+							RoomSelectorCombo
+						]
+						
 					]
-				]
+				]*/
 			]
 		]
 		
 		// Queries
 		+SVerticalBox::Slot()
-		.Padding(0,VPadding,0,0)
+		.Padding(0, (VPadding * 2), 0, 0)
 		[
 			SNew(SBox)
 			.HAlign(HAlign_Left)
@@ -777,46 +849,75 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					SNew(SVerticalBox)
 					// Query Dungeon File Path
 					+SVerticalBox::Slot().AutoHeight()
-					.Padding(0,VPadding,0,0)
+					.Padding(0, VPadding, 0, 0)
 					[
 						SNew(STextBlock).Text_Lambda([this]() -> FText
 						{
 							return FText::Format(
 								LOCTEXT("QueryDungeonFile Path", "Dungeon File saved at: {0}"),
-											  FText::FromString(*DungeonUtils->DungeonDataPath.ToString()));
+									FText::FromString(*DungeonUtils->GetDungeonDataPath()));
 						})
 					]
 
 					// Query Dungeon Rooms Count
 					+SVerticalBox::Slot().AutoHeight()
-					.Padding(0,VPadding / 2,0,0)
+					.Padding(0, (VPadding / 2), 0, 0)
 					[
 						SNew(STextBlock).Text_Lambda([this]() -> FText
 						{
-							return LOCTEXT("QueryDungeonRoomsText", "Dungeon Rooms Count: 0");
+							//return LOCTEXT("QueryDungeonRoomsText", "Dungeon Rooms Count: 0");
+							return FText::Format(
+								LOCTEXT("QueryDungeonRoomsText", "Dungeon Rooms Count: {0}"),
+									FText::FromString(FString::FromInt(DungeonUtils->GetDungeonRoomsCount())));
 						})
 					]
 
-					+SVerticalBox::Slot().AutoHeight()
+					// Query Preset Files Path
+					/* + SVerticalBox::Slot().AutoHeight()
 					.Padding(0,VPadding,0,0)
 					[
 						SNew(STextBlock).Text_Lambda([this]() -> FText
 						{
 							return FText::Format(
 								LOCTEXT("QueryPresetFilesPath", "Preset Files saved at: {0}"),
-											FText::FromString(*DungeonUtils->PrefabricsPath.ToString()));
+									FText::FromString(*DungeonUtils->CurrentSettings->PresetFolderPath.ToString()));
 						})
-					]
+					]*/
 
+					// Query Preset Files Count
 					+SVerticalBox::Slot().AutoHeight()
-					.Padding(0,VPadding / 2,0,0)
+					.Padding(0, (VPadding / 2), 0, 0)
 					[
 						SNew(STextBlock).Text_Lambda([this]() -> FText
 						{
+							//return LOCTEXT("QueryAssetFilesCountText", "Asset Files : 0");
 							return FText::Format(
-								LOCTEXT("QueryNumOfAssetFiles", "Asset Files: {0}"),
-											DungeonUtils->GetPresetsCount());
+								LOCTEXT("QueryNumOfAssetFiles", "Preset Asset Files: {0}"),
+									DungeonUtils->GetPresetFilesCount());
 						})
+					]
+					+ SVerticalBox::Slot()//.AutoHeight()
+					[
+						//AssetSearchBox						
+						SNew(SAssetDropTarget).OnAssetDropped_Lambda([this](UObject* Selection)
+						{
+							URoomPreset* CastObject = Cast<URoomPreset>(Selection);
+							if (CastObject)
+							{
+								DungeonUtils->SelectedPreset = Cast<URoomPreset>(Selection);
+							}
+						})
+						[
+							SNew(SBox)//.HAlign(HAlign_Fill).VAlign(VAlign_Fill)
+							[
+								SNew(STextBlock).Text_Lambda([this]() -> FText 
+								{
+									return DungeonUtils->SelectedPreset ? 
+										FText::FromString(DungeonUtils->SelectedPreset->GetName()) 
+										: LOCTEXT("None", "None");
+								})
+							]
+						]						
 					]
 				]
 			]

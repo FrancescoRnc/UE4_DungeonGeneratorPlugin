@@ -1,16 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "DungeonUtilities.h"
-
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Door.h"
 #include "DungeonData.h"
-#include "GenerationSettings.h"
 
 
 
 // FDungeonUtils
 FDungeonUtils* FDungeonUtils::Instance = nullptr;
+FDungeonUtils2* FDungeonUtils2::Instance = nullptr;
 
 FDungeonUtils::FDungeonUtils()
 {
@@ -22,26 +21,26 @@ void FDungeonUtils::GetPresetsOnLoad()
 	RoomPresets.Empty();
 	
 	TArray<FAssetData> Assets;
-	FAssetRegistryModule::GetRegistry().GetAssetsByPath(PrefabricsPath, Assets);
+	FAssetRegistryModule::GetRegistry().GetAssetsByPath(*CurrentSettings->RoomPresetFolderPath, Assets);
 	for (FAssetData Asset : Assets)
 	{
 		URoomPresetPtr NewPreset = Cast<URoomPreset>(Asset.GetAsset());
 		AddAssetReference(NewPreset);		
 	}
 
-	TArray<FAssetData> DungeonAssets;
-	FAssetRegistryModule::GetRegistry().GetAssetsByPath(DungeonDataPath, DungeonAssets);
-	if (DungeonAssets.Num() <= 0)
-	{
-		return;
-	}
-
-	CurrentDungeonFile = Cast<UDungeonData>(DungeonAssets[0].GetAsset());
-	if (IsValid(CurrentDungeonFile))
-	{
-		CurrentDungeonPath = *CurrentDungeonFile->GetPathName();
-		DungeonPackage = CurrentDungeonFile->GetPackage();
-	}
+	//TArray<FAssetData> DungeonAssets;
+	//FAssetRegistryModule::GetRegistry().GetAssetsByPath(CurrentSettings->DungeonDataFolderPath, DungeonAssets);
+	//if (DungeonAssets.Num() <= 0)
+	//{
+	//	return;
+	//}
+	//
+	//CurrentDungeonFile = Cast<UDungeonData>(DungeonAssets[0].GetAsset());
+	//if (IsValid(CurrentDungeonFile))
+	//{
+	//	CurrentDungeonPath = *CurrentDungeonFile->GetPathName();
+	//	DungeonPackage = CurrentDungeonFile->GetPackage();
+	//}
 	
 	const bool Rescan = RescanAssetReferences();
 	UE_LOG(LogTemp, Warning, TEXT("Asset References Got? %d"), Rescan);
@@ -51,7 +50,8 @@ void FDungeonUtils::AddAssetReference(URoomPresetPtr NewPreset)
 {	
 	NewPreset->PresetID = FMath::Rand();
 	RoomPresets.Add(NewPreset);
-	RoomPresetsMap.Add(NewPreset->PresetID, NewPreset);
+	RoomPresetsMap.Add(NewPreset->PresetID, *NewPreset->GetPathName());
+	//RoomPresetAssetsMap.Add(*NewPreset->GetPathName(), NewPreset);
 	RoomPresetPaths.Add(*NewPreset->GetPathName());
 	PresetPackages.Add(*NewPreset->GetPackage()->GetName(),
 				NewPreset->GetPackage());
@@ -63,6 +63,7 @@ void FDungeonUtils::DeleteAssetReference(URoomPresetPtr NewPreset)
 	{
 		RoomPresets.Remove(NewPreset);
 		RoomPresetsMap.Remove(NewPreset->PresetID);
+		//RoomPresetAssetsMap.Remove(*NewPreset->GetPathName());
 		RoomPresetPaths.Remove(*NewPreset->GetPathName());
 		PresetPackages.Remove(*NewPreset->GetPackage()->GetName());
 	}
@@ -71,7 +72,7 @@ void FDungeonUtils::DeleteAssetReference(URoomPresetPtr NewPreset)
 const bool FDungeonUtils::RescanAssetReferences() const
 {
 	TArray<FAssetData> Assets;
-	if (FAssetRegistryModule::GetRegistry().GetAssetsByPath(PrefabricsPath, Assets, true))
+	if (FAssetRegistryModule::GetRegistry().GetAssetsByPath(*CurrentSettings->RoomPresetFolderPath, Assets, true))
 	{
 		for (const FAssetData& Asset : Assets)
 		{
@@ -85,7 +86,7 @@ const bool FDungeonUtils::RescanAssetReferences() const
 		}
 	}
 	TArray<FAssetData> DungeonAssets;
-	if (FAssetRegistryModule::GetRegistry().GetAssetsByPath(PrefabricsPath, DungeonAssets, true))
+	if (FAssetRegistryModule::GetRegistry().GetAssetsByPath(*CurrentSettings->RoomPresetFolderPath, DungeonAssets, true))
 	{
 		if (DungeonAssets.Num() > 0)
 		{
@@ -111,9 +112,9 @@ URoomPresetPtr FDungeonUtils::GetRoomPresetByName(const FName Name) const
 	return nullptr;
 }
 
-URoomPresetPtr FDungeonUtils::GetRoomPresetByPath(const FName Path) const
+URoomPresetPtr FDungeonUtils::GetRoomPresetByPath(const FString Path) const
 {
-	const FAssetData Asset = FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(Path);
+	const FAssetData Asset = FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(*Path);
 	if (Asset.IsValid())
 	{
 		if (const URoomPresetPtr Preset = Cast<URoomPreset>(Asset.GetAsset()))
@@ -122,6 +123,13 @@ URoomPresetPtr FDungeonUtils::GetRoomPresetByPath(const FName Path) const
 		}
 	}		
 	return nullptr;
+
+	//URoomPresetPtr Preset = nullptr;
+	//if (RoomPresetAssetsMap.Contains(Path))
+	//{
+	//	Preset = RoomPresetAssetsMap[Path];
+	//}
+	//return Preset;
 }
 
 /*UGenerationSettings* FDungeonUtils::CreateSettingsFile(const FName FileDirectoryPath, EFileResultStatus& Result)
@@ -267,6 +275,96 @@ FFileReport FDungeonUtils::LoadSettings(const FName FilePath, UGenerationSetting
 	return Report;
 }
 
+
+FFileReport FDungeonUtils::CreateGenerationSettings()
+{
+	FFileReport Report;
+
+	/*CurrentSettings = NewObject<UGenerationSettings>
+	(
+		GetTransientPackage(),
+		TEXT("GenerationSettings"),
+		EObjectFlags::RF_Public | EObjectFlags::RF_Standalone
+	);
+
+	TArray<uint8> Data;
+	//FObjectWriter Archive(CurrentSettings, Data);
+
+	if (FFileHelper::LoadFileToArray(Data, CurrentSettingsDefaultFilePath))
+	{
+		FObjectReader Archive(CurrentSettings, Data);
+
+		Report = FFileReport
+		{
+			ECommandStatusType::VALID,
+			EFileResultStatus::LOADED
+		};
+	}
+	else
+	{
+		FObjectWriter Archive(CurrentSettings, Data);
+
+		if (FFileHelper::SaveArrayToFile(Data, CurrentSettingsDefaultFilePath))
+		{
+			Report = FFileReport
+			{
+				ECommandStatusType::VALID,
+				EFileResultStatus::CREATED
+			};
+		}
+	}*/
+
+	Report = CreateSerializedObject<UGenerationSettings>(CurrentSettings, TEXT("GenerationSettings"), CurrentSettingsDefaultFilePath);
+	//UE_LOG(LogTemp, Warning, TEXT("Current Data from %p at: %s"), CurrentSettings, *CurrentSettings->DungeonDataFolderPath);
+	Report = CreateSerializedObject<UDungeonData>(CurrentSettings->DungeonDataRef, TEXT("DungeonData"), CurrentSettings->DungeonDataFolderPath);
+
+	return Report;
+}
+
+FFileReport FDungeonUtils::LoadGenerationSettings()
+{
+	FFileReport Report;
+
+	//TArray<uint8> Data;
+	//if (FFileHelper::LoadFileToArray(Data, CurrentSettingsDefaultFilePath))
+	//{
+	//	FObjectReader Archive(CurrentSettings, Data);
+	//
+	//	UE_LOG(LogTemp, Warning, TEXT("Load Settings: %s"), *CurrentSettings->DungeonDataFolderPath);
+	//
+	//	Report = FFileReport
+	//	{
+	//		ECommandStatusType::VALID,
+	//		EFileResultStatus::LOADED
+	//	};
+	//}
+
+	Report = LoadSerializedObject(CurrentSettings, CurrentSettingsDefaultFilePath);
+
+	return Report;
+}
+
+FFileReport FDungeonUtils::SaveGenerationSettings()
+{
+	FFileReport Report;
+
+	//TArray<uint8> Data;
+	//FObjectWriter Archive(CurrentSettings, Data);
+	//if (FFileHelper::SaveArrayToFile(Data, CurrentSettingsDefaultFilePath))
+	//{
+	//	Report = FFileReport
+	//	{
+	//		ECommandStatusType::VALID,
+	//		EFileResultStatus::SAVED
+	//	};
+	//}
+
+	Report = SaveSerializedObject(CurrentSettings, CurrentSettingsDefaultFilePath);
+
+	return Report;
+}
+
+
 FFileReport FDungeonUtils::DeleteAsset(UObject* Asset)
 {
 	FFileReport Report;
@@ -308,7 +406,7 @@ bool FDungeonUtils::RGCommandMakeRoom(const FString AssetName)
 		return false;
 	}
 
-	const FString Path = PrefabricsPath.ToString();
+	const FString Path = CurrentSettings->RoomPresetFolderPath;
 	const FString PackageName = FString::Printf(TEXT("%s_Pkg"), *AssetName);
 	const FString PackagePath = FString::Printf(TEXT("%s/%s"), *Path, *PackageName);
 	const FString FullPathName = FString::Printf(TEXT("%s.%s"), *PackagePath, *AssetName);
@@ -336,7 +434,7 @@ UDungeonData* FDungeonUtils::SaveDungeonData(const FDungeonInfo& Info)
 		return nullptr;
 	}
 
-	const FString Path = DungeonDataPath.ToString();
+	const FString Path = CurrentSettings->DungeonDataFolderPath;
 	const FString AssetName = TEXT("CurrentDungeon");
 	const FString PackageName = FString::Printf(TEXT("%s_Pkg"), *AssetName);
 	const FString PackagePath = FString::Printf(TEXT("%s/%s"), *Path, *PackageName);
@@ -361,7 +459,7 @@ UDungeonData* FDungeonUtils::SaveDungeonData(const FDungeonInfo& Info)
 	Data->PathLength = Info.RoomsInfo.Num();
 	Data->GridScheme = Info.GridScheme;
 	Data->RoomsPresetID.Init(-1, Data->PathLength);
-	Data->RoomsPresetPaths.Init(NAME_None, Data->PathLength);
+	Data->RoomsPresetPaths.Init(TEXT(""), Data->PathLength);
 	Data->RoomsCoordinate.Init({0,0,0}, Data->PathLength);
 	Data->RoomsGridIndex.Init(-1, Data->PathLength);
 	for (int32 Index = 0; Index < Data->PathLength; Index++)
@@ -385,7 +483,7 @@ UDungeonData* FDungeonUtils::SaveDungeonData(const FDungeonInfo& Info)
 	 
 	CurrentDungeonFile = Data;
 	CurrentDungeonPath = *Data->GetPathName();
-	DungeonPackage = Package;
+	//DungeonPackage = Package;
 	
 	const FString Filename = FPackageName::LongPackageNameToFilename(
 		Package->GetName(), FPackageName::GetAssetPackageExtension());
@@ -399,11 +497,202 @@ UDungeonData* FDungeonUtils::SaveDungeonData(const FDungeonInfo& Info)
 
 UDungeonData* FDungeonUtils::GetDungeonDataAsset() const
 {
-	const FAssetData AssetData = FAssetRegistryModule::GetRegistry()
-		.GetAssetByObjectPath(CurrentDungeonPath);
-	if (UDungeonData* Data = Cast<UDungeonData>(AssetData.GetAsset()))
+	//const FAssetData AssetData = FAssetRegistryModule::GetRegistry()
+	//	.GetAssetByObjectPath(*CurrentSettings->DungeonDataFolderPath);
+	//if (UDungeonData* Data = Cast<UDungeonData>(AssetData.GetAsset()))
+	//{
+	//	return Data;
+	//}
+	//return nullptr;
+	return CurrentSettings->DungeonDataRef;
+}
+
+
+
+
+
+FDungeonUtils2::FDungeonUtils2()
+{
+	Instance = this;
+}
+
+FFileReport FDungeonUtils2::CreateGenerationSettings()
+{
+	FFileReport Report;
+
+	Report = CreateSerializedObject<UGenerationSettings>(CurrentSettings, TEXT("GenerationSettings"), CurrentSettingsDefaultFilePath);
+	//UE_LOG(LogTemp, Warning, TEXT("Current Data from %p at: %s"), CurrentSettings, *CurrentSettings->DungeonDataFolderPath);
+	Report = CreateSerializedObject<UDungeonData>(CurrentSettings->DungeonDataRef, TEXT("DungeonData"), CurrentSettings->DungeonDataFolderPath);
+
+	return Report;
+}
+
+FFileReport FDungeonUtils2::LoadGenerationSettings()
+{
+	FFileReport Report;
+
+	TArray<uint8> Data;
+	if (FFileHelper::LoadFileToArray(Data, *CurrentSettingsDefaultFilePath))
 	{
-		return Data;
+		FObjectReader Archive(CurrentSettings, Data);
+
+		UE_LOG(LogTemp, Warning, TEXT("Load Settings: %s"), *CurrentSettings->DungeonDataFolderPath);
+
+		Report = FFileReport
+		{
+			ECommandStatusType::VALID,
+			EFileResultStatus::LOADED
+		};
 	}
-	return nullptr;
+
+
+	return Report;
+}
+
+FFileReport FDungeonUtils2::SaveGenerationSettings()
+{
+	FFileReport Report;
+
+	TArray<uint8> Data;
+	FObjectWriter Archive(CurrentSettings, Data);
+	if (FFileHelper::SaveArrayToFile(Data, *CurrentSettingsDefaultFilePath))
+	{
+		Report = FFileReport
+		{
+			ECommandStatusType::VALID,
+			EFileResultStatus::SAVED
+		};
+	}
+
+	return Report;
+}
+
+TArray<URoomPreset*> FDungeonUtils2::GetPresetsArray() const
+{
+	TArray<URoomPreset*> OutArray;
+	CurrentSettings->RoomPresetsRefMap.GenerateValueArray(OutArray);
+	return OutArray;
+}
+
+void FDungeonUtils2::AddPresetReference(URoomPresetPtr NewPreset)
+{
+	NewPreset->PresetID = FMath::Rand();
+	CurrentSettings->RoomPresetsRefMap.Add(NewPreset->PresetID, NewPreset);
+	if (!CurrentSettings->RoomPresetsPaths.Contains<FString>(NewPreset->GetPathName()))
+	{
+		CurrentSettings->RoomPresetsPaths.Add(NewPreset->GetPathName());
+	}
+	
+
+	SaveSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);
+}
+
+void FDungeonUtils2::DeletePresetReference(URoomPresetPtr NewPreset)
+{
+	CurrentSettings->RoomPresetsRefMap.Remove(NewPreset->PresetID);
+	if (CurrentSettings->RoomPresetsPaths.Contains<FString>(NewPreset->GetPathName()))
+	{
+		CurrentSettings->RoomPresetsPaths.Remove(NewPreset->GetPathName());
+	}
+
+	SaveSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);
+}
+
+void FDungeonUtils2::GetPresetsOnLoad()
+{
+	IAssetRegistry& AssetRegistry = FAssetRegistryModule::GetRegistry();
+	
+	// RoomPresetFolderPath is the Default location of our Sample Presets.
+	// We should go get them first.
+	/*TArray<FAssetData> DefaultAssetDataArray;
+	AssetRegistry.GetAssetsByPath(*CurrentSettings->RoomPresetFolderPath, DefaultAssetDataArray);
+	if (DefaultAssetDataArray.Num() > 0)
+	{		
+		for (const FAssetData& Asset : DefaultAssetDataArray)
+		{
+			URoomPreset* NewPreset = Cast<URoomPreset>(Asset.GetAsset());
+			
+			if (!NewPreset)
+			{
+				UE_LOG(LogTemp, Error, TEXT("ERROR: Preset File at %s not found!"), *Asset.ObjectPath.ToString());
+				continue;
+			}
+
+			AddPresetReference(NewPreset);
+			UE_LOG(LogTemp, Warning, TEXT("Preset %s at %s succesfully registered!"),
+				   *NewPreset->GetName(), *Asset.ObjectPath.ToString());
+		}
+		UE_LOG(LogTemp, Warning, TEXT("Default Presets Succesfully Loaded"));
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("ERROR: Default Presets Folder Path is Empty or does not exist!"));
+	}*/
+
+	// Let's load Presets from our already serialized PathArray.
+	const TArray<FString> Paths = CurrentSettings->RoomPresetsPaths;
+	const int32 Pathslength = Paths.Num();
+	if (Pathslength == 0)
+	{
+		//UE_LOG(LogTemp, Error, TEXT("ERROR: Presets Files not found here!"));
+		UE_LOG(LogTemp, Error, TEXT("ERROR: There are no Presets to Load!"));
+		return;
+	}
+	
+	for (int32 Index = 0; Index < Pathslength; Index++)
+	{
+		const FAssetData Asset = AssetRegistry.GetAssetByObjectPath(*Paths[Index]);
+		URoomPreset* NewPreset = Cast<URoomPreset>(Asset.GetAsset());
+
+		if (!NewPreset)
+		{
+			UE_LOG(LogTemp, Error, TEXT("ERROR: Preset File at %s not found!"), *Paths[Index]);
+			CurrentSettings->RoomPresetsPaths.Remove(*Paths[Index]);
+			continue;
+		}
+
+		AddPresetReference(NewPreset);
+		UE_LOG(LogTemp, Warning, TEXT("Preset %s at %s succesfully registered!"),
+			   *NewPreset->GetName(), *Paths[Index]);
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Presets Load process Complete!"));
+}
+
+UDungeonData* FDungeonUtils2::SaveDungeonData(const FDungeonInfo& Info)
+{
+	UDungeonData* Data = CurrentSettings->DungeonDataRef;
+
+	// Generate Data
+	Data->GridSize = Info.GridSize;
+	Data->PathLength = Info.RoomsInfo.Num();
+	Data->GridScheme = Info.GridScheme;
+	Data->RoomsPresetID.Init(-1, Data->PathLength);
+	Data->RoomsPresetPaths.Init(TEXT(""), Data->PathLength);
+	Data->RoomsCoordinate.Init({ 0,0,0 }, Data->PathLength);
+	Data->RoomsGridIndex.Init(-1, Data->PathLength);
+	for (int32 Index = 0; Index < Data->PathLength; Index++)
+	{
+		const FRoomInfo RoomInfo = Info.RoomsInfo[Index];
+		Data->RoomsPresetID[Index] = RoomInfo.PresetID;
+		Data->RoomsPresetPaths[Index] = RoomInfo.PresetPath;
+		Data->RoomsCoordinate[Index] = RoomInfo.CoordinateInGrid;
+		Data->RoomsGridIndex[Index] = RoomInfo.IndexInGrid;
+		const int32 RoomsCount = RoomInfo.DoorsInfo.Num();
+		for (int32 DoorIndex = 0; DoorIndex < RoomsCount; DoorIndex++)
+		{
+			const int32 IntDirection = static_cast<int32>
+				(RoomInfo.DoorsInfo[DoorIndex].Direction);
+			Data->DoorsDirection.Add(IntDirection);
+			Data->DoorsSourceRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].SourceRoomIndex);
+			Data->DoorsNextRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].NextRoomIndex);
+		}
+	}
+	// ----------------
+
+	CurrentSettings->DungeonDataRef = Data;
+
+	SaveSerializedObject(CurrentSettings->DungeonDataRef, CurrentSettingsDefaultFilePath);
+
+	return Data;
 }

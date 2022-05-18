@@ -3,11 +3,23 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DungeonData.h"
+#include "RoomData.h"
+#include "Misc/FileHelper.h"
+#include "Serialization/BufferArchive.h"
+#include "Serialization/ObjectReader.h"
+#include "Serialization/ObjectWriter.h"
 #include "UObject/NoExportTypes.h"
 #include "GenerationSettings.generated.h"
 
+
+DECLARE_LOG_CATEGORY_EXTERN(LogGenSettings, All, All);
+
+using URoomPresetPtr = URoomPreset*; //TSoftObjectPtr<URoomPreset>;
+
+
 /**
- * This Object File will be loaded at Plugin Startup and saved at Shutdown, 
+ * This Object will be loaded at Plugin Startup, 
  * and its parameters will be used by all Plugin Features.
  */
 UCLASS()
@@ -15,16 +27,27 @@ class DUNGEONGENERATOR_API UGenerationSettings : public UObject
 {
 	GENERATED_BODY()
 
-	public:
+
+public:
+	UGenerationSettings();
 
 	UPROPERTY(VisibleAnywhere)
-	FName DungeonDataFolderPath = NAME_None;
+	FString DungeonDataFolderPath = TEXT("/DungeonGenerator/Dungeon/Data/");
 
 	UPROPERTY(VisibleAnywhere)
-	FName PresetFolderPath = NAME_None;
+	FString RoomPresetFolderPath = TEXT("/DungeonGenerator/Dungeon/Presets/");
+
+	UPROPERTY(VisibleAnywhere)
+	uint32 InitialRoomsCount = 0;
 
 	UPROPERTY(VisibleAnywhere)
 	uint32 InitialPresetFilesCount = 0;
+
+	UPROPERTY(VisibleAnywhere)
+	TArray<FString> RoomPresetsPaths{};
+
+	//UPROPERTY(VisibleAnywhere)
+	//FString SelectedPresetPath = TEXT("");
 
 	/*UFUNCTION()
 	void SetDungeonDataFolderPath(const FName Path);
@@ -38,5 +61,20 @@ class DUNGEONGENERATOR_API UGenerationSettings : public UObject
 	UFUNCTION()
 	FName GetPresetFolderPath() const;*/
 
+	UPROPERTY(VisibleAnywhere)
+	UDungeonData* DungeonDataRef = nullptr;
+
+	UPROPERTY(VisibleAnywhere)
+	URoomPreset* SelectedPresetRef = nullptr;
+
+	UPROPERTY(VisibleAnywhere)
+	TMap<int32, URoomPreset*> RoomPresetsRefMap{};
+
+
 	void Serialize(FArchive& Ar) override;
+
+
+private:
+	UDungeonData* LoadDungeonDataReference();
+	TMap<int32, URoomPreset*> LoadRoomPresetReferences();
 };
