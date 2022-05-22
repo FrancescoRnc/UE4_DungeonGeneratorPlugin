@@ -270,7 +270,7 @@ public:
 
 	FORCEINLINE const FString GetDungeonDataPath() const
 	{
-		return CurrentSettings->DungeonDataFolderPath;
+		return CurrentSettings->DungeonDataFilePath;
 	}
 
 	FORCEINLINE const int32 GetDungeonRoomsCount() const
@@ -280,7 +280,8 @@ public:
 
 	FORCEINLINE void SetDungeonDataPath(const FString& InPath) const
 	{
-		CurrentSettings->DungeonDataFolderPath = InPath;
+		const FString DataFolderPath = InPath;
+		CurrentSettings->DungeonDataFilePath = DataFolderPath + TEXT("DungeonData.bin");
 	}
 
 	FORCEINLINE void SetDungeonRoomsCount(const int32 InCount) const
@@ -329,7 +330,8 @@ public:
 
 	FORCEINLINE int32 GetPresetFilesCount() const
 	{
-		return CurrentSettings->RoomPresetsRefMap.Num();
+		//return CurrentSettings->RoomPresetsRefMap.Num();
+		return CurrentSettings->RoomPresetsPaths.Num();
 	}
 
 	FORCEINLINE bool CheckRoomPresetByID(const int32 ID) const
@@ -338,7 +340,9 @@ public:
 	}
 
 	void AddPresetReference(URoomPresetPtr NewPreset);
+	void AddPresetPath(const FString& NewPath);
 	void DeletePresetReference(URoomPresetPtr NewPreset);
+	void DeletePresetPath(const FString& Path);
 
 	void GetPresetsOnLoad();
 
@@ -354,7 +358,7 @@ public:
 			(
 				GetTransientPackage(), ObjectName,
 				EObjectFlags::RF_Public | EObjectFlags::RF_Standalone
-				);
+			);
 
 		Report = LoadSerializedObject(OutObjectRef, FilePath);
 		if (Report.CommandStatus == ECommandStatusType::ERROR)

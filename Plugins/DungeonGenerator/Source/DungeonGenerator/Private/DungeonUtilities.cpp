@@ -29,7 +29,7 @@ void FDungeonUtils::GetPresetsOnLoad()
 	}
 
 	//TArray<FAssetData> DungeonAssets;
-	//FAssetRegistryModule::GetRegistry().GetAssetsByPath(CurrentSettings->DungeonDataFolderPath, DungeonAssets);
+	//FAssetRegistryModule::GetRegistry().GetAssetsByPath(CurrentSettings->DungeonDataFilePath, DungeonAssets);
 	//if (DungeonAssets.Num() <= 0)
 	//{
 	//	return;
@@ -315,8 +315,8 @@ FFileReport FDungeonUtils::CreateGenerationSettings()
 	}*/
 
 	Report = CreateSerializedObject<UGenerationSettings>(CurrentSettings, TEXT("GenerationSettings"), CurrentSettingsDefaultFilePath);
-	//UE_LOG(LogTemp, Warning, TEXT("Current Data from %p at: %s"), CurrentSettings, *CurrentSettings->DungeonDataFolderPath);
-	Report = CreateSerializedObject<UDungeonData>(CurrentSettings->DungeonDataRef, TEXT("DungeonData"), CurrentSettings->DungeonDataFolderPath);
+	//UE_LOG(LogTemp, Warning, TEXT("Current Data from %p at: %s"), CurrentSettings, *CurrentSettings->DungeonDataFilePath);
+	Report = CreateSerializedObject<UDungeonData>(CurrentSettings->DungeonDataRef, TEXT("DungeonData"), CurrentSettings->DungeonDataFilePath);
 
 	return Report;
 }
@@ -330,7 +330,7 @@ FFileReport FDungeonUtils::LoadGenerationSettings()
 	//{
 	//	FObjectReader Archive(CurrentSettings, Data);
 	//
-	//	UE_LOG(LogTemp, Warning, TEXT("Load Settings: %s"), *CurrentSettings->DungeonDataFolderPath);
+	//	UE_LOG(LogTemp, Warning, TEXT("Load Settings: %s"), *CurrentSettings->DungeonDataFilePath);
 	//
 	//	Report = FFileReport
 	//	{
@@ -434,7 +434,7 @@ UDungeonData* FDungeonUtils::SaveDungeonData(const FDungeonInfo& Info)
 		return nullptr;
 	}
 
-	const FString Path = CurrentSettings->DungeonDataFolderPath;
+	const FString Path = CurrentSettings->DungeonDataFilePath;
 	const FString AssetName = TEXT("CurrentDungeon");
 	const FString PackageName = FString::Printf(TEXT("%s_Pkg"), *AssetName);
 	const FString PackagePath = FString::Printf(TEXT("%s/%s"), *Path, *PackageName);
@@ -498,7 +498,7 @@ UDungeonData* FDungeonUtils::SaveDungeonData(const FDungeonInfo& Info)
 UDungeonData* FDungeonUtils::GetDungeonDataAsset() const
 {
 	//const FAssetData AssetData = FAssetRegistryModule::GetRegistry()
-	//	.GetAssetByObjectPath(*CurrentSettings->DungeonDataFolderPath);
+	//	.GetAssetByObjectPath(*CurrentSettings->DungeonDataFilePath);
 	//if (UDungeonData* Data = Cast<UDungeonData>(AssetData.GetAsset()))
 	//{
 	//	return Data;
@@ -521,8 +521,9 @@ FFileReport FDungeonUtils2::CreateGenerationSettings()
 	FFileReport Report;
 
 	Report = CreateSerializedObject<UGenerationSettings>(CurrentSettings, TEXT("GenerationSettings"), CurrentSettingsDefaultFilePath);
-	//UE_LOG(LogTemp, Warning, TEXT("Current Data from %p at: %s"), CurrentSettings, *CurrentSettings->DungeonDataFolderPath);
-	Report = CreateSerializedObject<UDungeonData>(CurrentSettings->DungeonDataRef, TEXT("DungeonData"), CurrentSettings->DungeonDataFolderPath);
+	//UE_LOG(LogTemp, Warning, TEXT("Current Data from %p at: %s"), CurrentSettings, *CurrentSettings->DungeonDataFilePath);
+	Report = CreateSerializedObject<UDungeonData>(CurrentSettings->DungeonDataRef, TEXT("DungeonData"), CurrentSettings->DungeonDataFilePath);
+	//CurrentSettings->DungeonDataRef = NewObject<UDungeonData>(GetTransientPackage(), TEXT("DungeonData"), EObjectFlags::RF_Public | EObjectFlags::RF_Standalone);
 
 	return Report;
 }
@@ -536,7 +537,7 @@ FFileReport FDungeonUtils2::LoadGenerationSettings()
 	{
 		FObjectReader Archive(CurrentSettings, Data);
 
-		UE_LOG(LogTemp, Warning, TEXT("Load Settings: %s"), *CurrentSettings->DungeonDataFolderPath);
+		UE_LOG(LogTemp, Warning, TEXT("Load Settings: %s"), *CurrentSettings->DungeonDataFilePath);
 
 		Report = FFileReport
 		{
@@ -581,8 +582,17 @@ void FDungeonUtils2::AddPresetReference(URoomPresetPtr NewPreset)
 	if (!CurrentSettings->RoomPresetsPaths.Contains<FString>(NewPreset->GetPathName()))
 	{
 		CurrentSettings->RoomPresetsPaths.Add(NewPreset->GetPathName());
+	}	
+
+	SaveSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);
+}
+
+void FDungeonUtils2::AddPresetPath(const FString& NewPath)
+{
+	if (!CurrentSettings->RoomPresetsPaths.Contains<FString>(NewPath))
+	{
+		CurrentSettings->RoomPresetsPaths.Add(NewPath);
 	}
-	
 
 	SaveSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);
 }
@@ -593,6 +603,16 @@ void FDungeonUtils2::DeletePresetReference(URoomPresetPtr NewPreset)
 	if (CurrentSettings->RoomPresetsPaths.Contains<FString>(NewPreset->GetPathName()))
 	{
 		CurrentSettings->RoomPresetsPaths.Remove(NewPreset->GetPathName());
+	}
+
+	SaveSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);
+}
+
+void FDungeonUtils2::DeletePresetPath(const FString& Path)
+{
+	if (CurrentSettings->RoomPresetsPaths.Contains<FString>(Path))
+	{
+		CurrentSettings->RoomPresetsPaths.Remove(Path);
 	}
 
 	SaveSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);
@@ -661,6 +681,7 @@ void FDungeonUtils2::GetPresetsOnLoad()
 
 UDungeonData* FDungeonUtils2::SaveDungeonData(const FDungeonInfo& Info)
 {
+	CurrentSettings->DungeonDataRef->Reset();
 	UDungeonData* Data = CurrentSettings->DungeonDataRef;
 
 	// Generate Data
@@ -692,7 +713,7 @@ UDungeonData* FDungeonUtils2::SaveDungeonData(const FDungeonInfo& Info)
 
 	CurrentSettings->DungeonDataRef = Data;
 
-	SaveSerializedObject(CurrentSettings->DungeonDataRef, CurrentSettingsDefaultFilePath);
+	SaveSerializedObject(CurrentSettings->DungeonDataRef, CurrentSettings->DungeonDataFilePath);
 
 	return Data;
 }

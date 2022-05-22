@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-//#include "DungeonUtilities.h"
 #include "RoomData.h"
 #include "Door.h"
 #include "DungeonRoom.generated.h"
@@ -28,9 +27,20 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UStaticMeshComponent* WallsMeshComponent;
 
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
+	UInstancedStaticMeshComponent* DoorsMeshComponent;
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TArray<ADoor*> DoorsRef;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Edit")
+	UStaticMesh* InFloorMesh;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Edit")
+	UStaticMesh* InWallsMesh;
+
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Edit")
+	UStaticMesh* InDoorMesh;
 	
 	FRoomInfo RoomInfo;
 	

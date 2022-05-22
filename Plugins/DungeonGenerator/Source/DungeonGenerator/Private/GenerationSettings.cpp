@@ -23,14 +23,14 @@ UDungeonData* UGenerationSettings::LoadDungeonDataReference()
 	);
 
 	TArray<uint8> RawData;
-	if (FFileHelper::LoadFileToArray(RawData, *DungeonDataFolderPath))
+	if (FFileHelper::LoadFileToArray(RawData, *DungeonDataFilePath))
 	{
 		FObjectReader Archive(DungeonData, RawData);
 	}
 	else
 	{
 		FObjectWriter Archive(DungeonData, RawData);
-		if (!FFileHelper::SaveArrayToFile(RawData, *DungeonDataFolderPath))
+		if (!FFileHelper::SaveArrayToFile(RawData, *DungeonDataFilePath))
 		{
 			UE_LOG(LogGenSettings, Error, TEXT("ERROR during DungeonData Creation!"));
 		}
@@ -58,7 +58,7 @@ void UGenerationSettings::Serialize(FArchive& Ar)
 	if (Ar.IsSaving())
 	{
 		int32 PresetsCount = RoomPresetsPaths.Num();
-		Ar << DungeonDataFolderPath;
+		Ar << DungeonDataFilePath;
 		Ar << RoomPresetFolderPath;
 		Ar << InitialRoomsCount;
 		Ar << PresetsCount;
@@ -94,7 +94,7 @@ void UGenerationSettings::Serialize(FArchive& Ar)
 		//Ar.Serialize(LoadedRoomPresetsPaths, 0);
 		//Ar << LoadedRoomPresetsPaths;
 
-		DungeonDataFolderPath = LoadedDungeonDataFolderPath;
+		DungeonDataFilePath = LoadedDungeonDataFolderPath;
 		RoomPresetFolderPath = LoadedRoomPresetFolderPath;
 		InitialRoomsCount = LoadedRoomsFilesCount;
 		//InitialPresetFilesCount = LoadedInitialPresetFilesCount;

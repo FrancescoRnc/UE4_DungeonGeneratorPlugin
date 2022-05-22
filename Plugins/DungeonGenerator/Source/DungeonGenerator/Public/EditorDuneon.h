@@ -6,17 +6,17 @@
 #include "GameFramework/Actor.h"
 #include "DungeonData.h"
 #include "DungeonUtilities.h"
-#include "RuntimeDungeon.generated.h"
+#include "EditorDuneon.generated.h"
 
 UCLASS()
-class DUNGEONGENERATOR_API ARuntimeDungeon : public AActor, public IDungeonBuilder
+class DUNGEONGENERATOR_API AEditorDuneon : public AActor, public IDungeonBuilder
 {
 	GENERATED_BODY()
-
+	
 public:	
 	// Sets default values for this actor's properties
-	ARuntimeDungeon();
-	
+	AEditorDuneon();
+
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UInstancedStaticMeshComponent* DoorInstancesComponent = nullptr;
 
@@ -25,7 +25,7 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TMap<int32, UInstancedStaticMeshComponent*> WallsMeshInstances{};
-	
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -38,13 +38,13 @@ public:
 	// Called every frame
 	//virtual void Tick(float DeltaTime) override;
 
-	
+
 	virtual void BuildDungeon(const int32 RoomsCount) override;
 	virtual void BuildRooms() override;
 	virtual void BuildDoors() override;
-	
+
 	UFUNCTION(BlueprintCallable)
-	void Build();
+		void Build();
 
 	private:
 	TSoftObjectPtr<UDungeonData> DungeonDataRef;

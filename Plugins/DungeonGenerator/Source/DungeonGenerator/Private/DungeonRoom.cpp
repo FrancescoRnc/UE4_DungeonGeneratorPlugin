@@ -13,9 +13,11 @@ ADungeonRoom::ADungeonRoom()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root Component"));
 	FloorMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Floor Mesh"));
 	WallsMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Walls Mesh"));
+	DoorsMeshComponent = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Doors Mesh"));
 
 	FloorMeshComponent->SetupAttachment(RootComponent);
 	WallsMeshComponent->SetupAttachment(RootComponent);
+	DoorsMeshComponent->SetupAttachment(RootComponent);
 }
 
 // Called when the game starts or when spawned

@@ -32,7 +32,7 @@ public:
 	UGenerationSettings();
 
 	UPROPERTY(VisibleAnywhere)
-	FString DungeonDataFolderPath = TEXT("/DungeonGenerator/Dungeon/Data/");
+	FString DungeonDataFilePath = TEXT("/DungeonGenerator/Dungeon/Data/DungeonData.bin");
 
 	UPROPERTY(VisibleAnywhere)
 	FString RoomPresetFolderPath = TEXT("/DungeonGenerator/Dungeon/Presets/");
@@ -46,8 +46,6 @@ public:
 	UPROPERTY(VisibleAnywhere)
 	TArray<FString> RoomPresetsPaths{};
 
-	//UPROPERTY(VisibleAnywhere)
-	//FString SelectedPresetPath = TEXT("");
 
 	/*UFUNCTION()
 	void SetDungeonDataFolderPath(const FName Path);

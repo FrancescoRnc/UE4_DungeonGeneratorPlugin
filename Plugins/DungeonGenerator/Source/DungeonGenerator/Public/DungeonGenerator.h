@@ -92,6 +92,9 @@ public:
 	/** FSelfRegisteringExec implementation */
 	virtual bool Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDevice& Ar) override;
 
+	void RegisterRoomPresetAssetPath(FMenuBuilder& MenuBuilder, const TArray<FAssetData> Data);
+	void DGCommandRegisterPresetsPath(const TArray<FAssetData>& Data);
+	TSharedRef<FExtender> ExtendContentBrowser(const TArray<FAssetData>& Data);
 	TSharedRef<class SDockTab> SpawnNomadTab(const FSpawnTabArgs& TabSpawnArgs);
 
 
@@ -112,11 +115,13 @@ private:
 	
 
 public:
-	FReply DGCommandGenerate();
-    FReply DGCommandSave();
-	FReply DGCommandReset();
-	FReply DGCommandPreview();
-	FReply DGCommandRoomPreview();
+	void DGCommandGenerate();
+    void DGCommandSave();
+	void DGCommandReset();
+	void DGCommandPreview();
+	void DGCommandRoomPreview();
+	void DGCommandRoomSave();
+	void DGCommandRoomReset();
 	
 	void RGCommandMakeRoom(const FText& InText, ETextCommit::Type InCommitType);
 

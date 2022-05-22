@@ -255,7 +255,7 @@ bool FGeneratorSettingFileLoad::RunTest(const FString& Parameters)
 	TestNotNull(TEXT("Settings File should not be Null after reload"), ReSettings);
 	TestEqual(TEXT("Settings File Result after Load should be LOADED"), LoadReport.ResultStatus, EFileResultStatus::LOADED);
 	TestEqual(TEXT("Reloaded File should have Initial Preset Files Count saved equal to 2"), ReSettings->InitialPresetFilesCount, 2);
-	TestEqual(TEXT("Reloaded File should have Dungeon Data File Path saved equal to /DungeonGenerator/Test/Dungeon"), ReSettings->DungeonDataFolderPath, TEXT("/DungeonGenerator/Test/Dungeon"));
+	TestEqual(TEXT("Reloaded File should have Dungeon Data File Path saved equal to /DungeonGenerator/Test/Dungeon"), ReSettings->DungeonDataFilePath, TEXT("/DungeonGenerator/Test/Dungeon"));
 
 	DungeonUtils->DeleteAsset(Settings);
 
@@ -271,7 +271,7 @@ bool FGeneratorSettingFileSave::RunTest(const FString& Parameters)
 
 	// File Save Test
 	Settings->InitialPresetFilesCount = 2;
-	Settings->DungeonDataFolderPath = TEXT("/DungeonGenerator/Test/Dungeon");
+	Settings->DungeonDataFilePath = TEXT("/DungeonGenerator/Test/Dungeon");
 
 	FFileReport SaveReport = DungeonUtils->SaveAsset(Settings);
 

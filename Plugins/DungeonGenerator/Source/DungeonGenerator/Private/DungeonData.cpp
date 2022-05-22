@@ -34,18 +34,29 @@ void UDungeonData::Serialize(FArchive& Ar)
 
 	if (Ar.IsSaving())
 	{
-		Ar << GridScheme;
+		//Ar << GridScheme;
+		//Ar << PathLength;
+		//Ar << GridSize;
+		//Ar << RoomsPresetID;
+		//Ar << RoomsPresetPaths;
+		//Ar << RoomsCoordinate;
+		//Ar << RoomsGridIndex;
+		//Ar << DoorsSourceRoomIndex;
+		//Ar << DoorsNextRoomIndex;
+		//Ar << DoorsDirection;
+
+		GridScheme.BulkSerialize(Ar);
 		Ar << PathLength;
 		Ar << GridSize;
-		Ar << RoomsPresetID;
-		Ar << RoomsPresetPaths;
-		Ar << RoomsCoordinate;
-		Ar << RoomsGridIndex;
-		Ar << DoorsSourceRoomIndex;
-		Ar << DoorsNextRoomIndex;
-		Ar << DoorsDirection;
+		RoomsPresetID.BulkSerialize(Ar);
+		RoomsPresetPaths.BulkSerialize(Ar);
+		RoomsCoordinate.BulkSerialize(Ar);
+		RoomsGridIndex.BulkSerialize(Ar);
+		DoorsSourceRoomIndex.BulkSerialize(Ar);
+		DoorsNextRoomIndex.BulkSerialize(Ar);
+		DoorsDirection.BulkSerialize(Ar);
 	}
-	else if (Ar.IsLoading())
+	/*else if (Ar.IsLoading())
 	{
 		int32				LoadedPathLength;
 		FIntVector			LoadedGridSize;
@@ -79,7 +90,5 @@ void UDungeonData::Serialize(FArchive& Ar)
 		DoorsSourceRoomIndex = LoadedDoorsSourceRoomIndex;
 		DoorsNextRoomIndex = LoadedDoorsNextRoomIndex;
 		DoorsDirection = LoadedDoorsDirection;
-	}
-
-	
+	}*/
 }
