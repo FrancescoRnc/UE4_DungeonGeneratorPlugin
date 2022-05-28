@@ -6,14 +6,14 @@
 #include "IAssetTypeActions.h"
 #include "ContentBrowserModule.h"
 #include "DungeonData.h"
-#include "DungeonRoom.h"
 #include "DungeonSchemeMaker.h"
 #include "Editor.h"
+#include "EditorDungeon.h"
+#include "EditorRoom.h"
+#include "EngineUtils.h"
 #include "Engine/Selection.h"
-#include "LevelEditor.h"
 #include "RoomData.h"
 #include "SAssetDropTarget.h"
-#include "SRoomSelectorCombo.h"
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/LayerManager/SLayerManager.h"
@@ -30,102 +30,20 @@ DEFINE_LOG_CATEGORY(LogDunGenExecQueryFiles);
 DEFINE_LOG_CATEGORY(LogDunGenExecQueryInfo);
 
 
-// FRoomGenerator
-FRoomGenerator::FRoomGenerator()
-{
-
-}
-
-ADungeonRoom* FRoomGenerator::Generate(const FRoomInfo& Info)
-{
-	UWorld* World = GEditor->GetEditorWorldContext().World();
-
-	ADungeonRoom* Room = World->SpawnActor<ADungeonRoom>
-		(ADungeonRoom::StaticClass(), FTransform::Identity);
-	
-	InsertData(Room, Info);
-
-	return Room;
-}
-
-void FRoomGenerator::InsertData(ADungeonRoom* Room, const FRoomInfo& Info)
-{
-	Room->RoomInfo = Info;
-}
-
-void FRoomGenerator::Locate(ADungeonRoom* Room)
-{
-	const FVector Location = FVector(
-    	
-		Room->RoomInfo.CoordinateInGrid.Y * 5000.f,
-		-Room->RoomInfo.CoordinateInGrid.X * 5000.f,
-		0);
-	Room->SetActorLocation(Location);
-
-	if (Room->DoorsRef.Num() > 0)
-	{
-		for(ADoor* Door : Room->DoorsRef)
-		{
-			FName DirectionName;
-			switch (Door->DoorInfo.Direction)
-			{
-				case EWorldDirection::NORTH:
-					DirectionName = TEXT("North");
-					break;
-				case EWorldDirection::EAST:
-					DirectionName = TEXT("East");
-					break;
-				case EWorldDirection::SOUTH:
-					DirectionName = TEXT("South");
-					break;
-				case EWorldDirection::WEST:
-					DirectionName = TEXT("West");
-					break;
-				default:
-					break;
-			}
-			const FVector  DoorLocation = Room->FloorMeshComponent->
-				GetSocketLocation(DirectionName);
-			const FRotator DoorRotation = Room->FloorMeshComponent->
-				GetSocketRotation(DirectionName);
-			Door->SetActorLocationAndRotation(DoorLocation, DoorRotation);
-		}
-	}
-}
-
-void FRoomGenerator::Show(ADungeonRoom* Room)
-{
-	const FSoftObjectPath Path(Room->RoomInfo.PresetPath);
-	const TSoftObjectPtr<URoomPreset> Preset(Path);
-	
-	Room->FloorMeshComponent->SetStaticMesh(Preset->FloorMesh);
-	Room->WallsMeshComponent->SetStaticMesh(Preset->WallsMesh);
-	
-	if (Room->DoorsRef.Num() > 0)
-	{
-		for(ADoor* Door : Room->DoorsRef)
-		{
-			Door->DoorMesh->SetStaticMesh(Preset->DoorsMesh);
-		}
-	}
-}
-
-
 // FDungeonGenerator
 FDungeonGenerator::FDungeonGenerator()
 {
 	
 }
 
-/*FDungeonGenerator::~FDungeonGenerator()
+FDungeonGenerator::~FDungeonGenerator()
 {
 	
-}*/
+}
 
 void FDungeonGenerator::BuildDungeon(const int32 RoomsCount)
 {
 	OutDungeonInfo = {};
-	//const int32 RoomsCount_ = FDungeonUtilities::Get()->GetDungeonRoomsCount();
 	if (RoomsCount <= 0)
 	{
 		UE_LOG(LogDunGenBuild, Display, TEXT("Cannot Building Dungeon! Rooms Count is no valid!"));
@@ -134,10 +52,12 @@ void FDungeonGenerator::BuildDungeon(const int32 RoomsCount)
 
 	UE_LOG(LogDunGenBuild, LOGCOLOR, TEXT("Building Dungeon..."));
 
+	// Here you can set whichever of your custom GeneratorMethods for your custom Dungeon Generation
 	TSharedPtr<FStandardGeneratorMethod> Method = MakeShared<FStandardGeneratorMethod>();
 	FDungeonGridMaker DungeonGridMaker(RoomsCount, Method.Get());
 
-	FGrid Grid = DungeonGridMaker.GetGrid();
+	//FGrid Grid = DungeonGridMaker.GetGrid();
+	FGrid Grid = DungeonGridMaker.Make();
 	const TArray<int32> Scheme = Grid.GetScheme();
 	const TArray<int32> SchemePath = Grid.GetSchemePath();
 	
@@ -145,28 +65,19 @@ void FDungeonGenerator::BuildDungeon(const int32 RoomsCount)
 	OutDungeonInfo.Grid = Grid;
 	OutDungeonInfo.GridSize = Grid.Size;	
 	OutDungeonInfo.GridScheme = Scheme;
-
-	
-	// Debug
-	/*UE_LOG(LogTemp, LOGCOLOR, TEXT("+--------------------------------+"));
-	UE_LOG(LogTemp, LOGCOLOR, TEXT("Grid Scheme"));
-	for (int32 Y = Grid.Size.Y - 1; Y >= 0; Y--)
-	{
-		FString Row("");
-		for (int32 X = Grid.Size.X - 1; X >= 0; X--)
-		{
-			const int32 Index = X + (Y * Grid.Size.X);
-			Row.Append(Scheme[Index] == 0 ?
-				TEXT("[--]") : FString::Printf(TEXT("[%02d]"), SchemePath[Index]));
-		}
-		UE_LOG(LogTemp, LOGCOLOR, TEXT("%s"), *Row);
-	}*/
 }
 
 void FDungeonGenerator::BuildRooms()
 {
 	if (OutDungeonInfo.State == EDungeonInfoState::NOVALID)
 	{
+		return;
+	}
+
+	const int32 PresetsCount = FDungeonUtilities::Get()->GetPresetFilesCount();
+	if (PresetsCount == 0)
+	{
+		UE_LOG(LogDunGenBuild, Error, TEXT("Impossible to Generate a new dungeon: No Presets loaded."));
 		return;
 	}
 
@@ -178,17 +89,14 @@ void FDungeonGenerator::BuildRooms()
 	for (int32 Index = 0; Index < Length; Index++)
 	{	
 		FRoomInfo Room;
-		const int32 PresetsCount = FDungeonUtilities::Get()->GetPresetFilesCount();
 		if (PresetsCount > 0)
-		//if (FDungeonUtilities::Get()->GetPresetsCount() > 0)
 		{
 			const TArray<URoomPreset*> PresetsArray = FDungeonUtilities::Get()->GetPresetsArray();
-			//const int32 RandomPresetsMax = FDungeonUtilities::Get()->GetPresetsCount() - 1;
 			const int32 RandomPresetsMax = PresetsCount - 1;
 			const int32 RandomPresetIndex = Index == 0 ? 0 : FMath::RandRange(1, RandomPresetsMax);
-			//const URoomPresetPtr RandomPreset = FDungeonUtilities::Get()->GetRoomPresets()[RandomPresetIndex];
 			const URoomPresetPtr RandomPreset = PresetsArray[RandomPresetIndex];
 			Room.PresetPath = *RandomPreset->GetPathName();
+			Room.PresetID = RandomPreset->PresetID;
 		}
 
 		const FIntVector RoomCoords =
@@ -223,7 +131,6 @@ void FDungeonGenerator::BuildDoors()
 	for (int32 RoomIndex = 1; RoomIndex < OutRoomsInfo.Num(); RoomIndex++)
 	{
 		const int32 PrevRoomIndex = RoomIndex - 1;
-		//UE_LOG(LogTemp, Display, TEXT("Index: %d | PrevIndex: %d"), RoomIndex, PrevRoomIndex);
 		FRoomInfo& PrevRoom = OutRoomsInfo[PrevRoomIndex];
 		FRoomInfo& CurrRoom = OutRoomsInfo[RoomIndex];
 		FDoorInfo PrevDoor, CurrDoor;
@@ -232,14 +139,11 @@ void FDungeonGenerator::BuildDoors()
 			CurrRoom.CoordinateInGrid - PrevRoom.CoordinateInGrid;
 		const int32 PatternIndex = Directions.IndexOfByKey(DeltaCoords);
 
-		//UE_LOG(LogTemp, Display, TEXT("Index: %d | Delta: %s"), PatternIndex, *DeltaCoords.ToString());
-
 		PrevDoor.SourceRoomName = PrevRoom.RoomName;
 		PrevDoor.SourceRoomIndex = PrevRoomIndex;
 		PrevDoor.NextRoomName = CurrRoom.RoomName;
 		PrevDoor.NextRoomIndex = RoomIndex;
 		const int32 CurrDirection = PatternIndex;
-		//	FDungeonGridMaker::GetPatternFromIndex(PatternIndex);
 		PrevDoor.Direction = static_cast<EWorldDirection>(PatternIndex);
 
 		CurrDoor.SourceRoomName = PrevRoom.RoomName;
@@ -247,15 +151,10 @@ void FDungeonGenerator::BuildDoors()
 		CurrDoor.NextRoomName = CurrRoom.RoomName;
 		CurrDoor.NextRoomIndex = PrevRoomIndex;
 		const int32 PrevDirection = IGeneratorMethod::GetOppositeIndex(PatternIndex);
-		//	FDungeonGridMaker::GetPatternFromIndex(
-		//		FDungeonGridMaker::GetOppositeIndex(PatternIndex));
 		CurrDoor.Direction = static_cast<EWorldDirection>(PrevDirection);
 
 		PrevRoom.DoorsInfo.Add(PrevDoor);
-		CurrRoom.DoorsInfo.Add(CurrDoor);
-
-		//OutDoorsInfo.Add(PrevDoor);
-		//OutDoorsInfo.Add(CurrDoor);		
+		CurrRoom.DoorsInfo.Add(CurrDoor);	
 	}
 	OutDungeonInfo.RoomsInfo = OutRoomsInfo;
 	
@@ -264,6 +163,16 @@ void FDungeonGenerator::BuildDoors()
 
 
 // FRuntimeDungeonGenerator
+FRuntimeDungeonGenerator::FRuntimeDungeonGenerator()
+{
+
+}
+
+FRuntimeDungeonGenerator::~FRuntimeDungeonGenerator()
+{
+
+}
+
 void FRuntimeDungeonGenerator::BuildDungeon(const int32 RoomsCount)
 {
 	
@@ -289,8 +198,6 @@ TArray<ADungeonRoom*> FRuntimeDungeonGenerator::GetRooms()
 	{
 		return Rooms;
 	}
-
-	FRoomGenerator Generator;
 	
 	return Rooms;
 }
@@ -304,9 +211,7 @@ TArray<ADoor*> FRuntimeDungeonGenerator::GetDoors()
 		RuntimeWorld->WorldType != EWorldType::PIE)
 	{
 		return Doors;
-	}
-
-	
+	}	
 	
 	return Doors;
 }
@@ -331,16 +236,14 @@ void FDungeonGeneratorModule::StartupModule()
     {    	
     	if (const URoomPresetPtr Preset = Cast<URoomPreset>(Object))
     	{
-    		//DungeonUtils.Get()->DeleteAssetReference(Preset);
-			DungeonUtils.Get()->DeletePresetReference(Preset);
+			DungeonUtils->DeletePresetReference(Preset);
     		UE_LOG(LogDunGenStartup, LOGCOLOR, TEXT("In Memory Asset Deleted: %s"), *Object->GetName());
     	}    	
     });
 
-	//FLevelEditorModule& LevelEditor = FModuleManager::LoadModuleChecked<FLevelEditorModule>("LevelEditor");
 	FContentBrowserModule& ContentBrowser = FModuleManager::LoadModuleChecked<FContentBrowserModule>("ContentBrowser");
-	ContentBrowser.GetAllAssetViewContextMenuExtenders().Add(FContentBrowserMenuExtender_SelectedAssets::CreateRaw(this, &FDungeonGeneratorModule::ExtendContentBrowser));
-
+	ContentBrowser.GetAllAssetViewContextMenuExtenders().Add(FContentBrowserMenuExtender_SelectedAssets::CreateRaw
+		(this, &FDungeonGeneratorModule::ExtendContentBrowser));
 
 	const TSharedPtr<FGlobalTabmanager> TabManager = FGlobalTabmanager::Get();
 	FTabSpawnerEntry SpawnerEntry = TabManager->RegisterNomadTabSpawner(DungeonGeneratorTabName,
@@ -354,8 +257,6 @@ void FDungeonGeneratorModule::StartupModule()
 
 void FDungeonGeneratorModule::ShutdownModule()
 {
-	//DungeonUtils->SaveGenerationSettings();
-
 	const TSharedPtr<FGlobalTabmanager> TabManager = FGlobalTabmanager::Get();
 	TabManager->UnregisterNomadTabSpawner(DungeonGeneratorTabName);
 	
@@ -376,8 +277,13 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 			const FString AssetName = Data.Value->GetName();
 			const FString AssetPath = Data.Value->GetPathName();
 			//UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Asset File: %s"), *Data->GetName());
-			UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Asset File: %s | Filepath: %s"), *AssetName, *AssetPath);
+			UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Registered Asset File: %s | At: %s"), *AssetName, *AssetPath);
 		}
+		for (const FString Path : DungeonUtils->GetPresetPaths())
+		{
+			UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Registered Asset File Path: %s"), *Path);
+		}
+
 	 	//UE_LOG(LogDunGenExecQueryFiles, Display, TEXT("Scan status: %d"), DungeonUtils->RescanAssetReferences());
 		
 		return true;
@@ -396,8 +302,7 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 		
 		for (int32 Index = 0; Index < RoomsCount; Index++)
 		{
-			const FRoomInfo CurrentRoom = CurrentDungeonInfo.RoomsInfo[Index];
-			
+			const FRoomInfo CurrentRoom = CurrentDungeonInfo.RoomsInfo[Index];			
 			
 			//const URoomPresetPtr GetPreset = DungeonUtils->GetRoomPresetByPath(CurrentRoom.PresetPath);
 			const URoomPresetPtr GetPreset = DungeonUtils->GetPresetByID(CurrentRoom.PresetID);
@@ -456,14 +361,19 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 
 
 // Commands
-void FDungeonGeneratorModule::DGCommandGenerate()
+void FDungeonGeneratorModule::DGCommandGenerateDungeonData()
 {
-	//DungeonUtils->GetDungeonDataAsset();
 	CurrentDungeonInfo.Reset();
+
+	const int32 RoomsCount = DungeonUtils->GetDungeonRoomsCount();
+	if (RoomsCount <= 0)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ERROR: Rooms Count value is not valid! Please try with another value."));
+		return;
+	}
 	
 	FDungeonGenerator DungeonGenerator;
-	//DungeonGenerator.BuildDungeon(DungeonUtils->CurrentSettings->InitialPresetFilesCount);
-	DungeonGenerator.BuildDungeon(DungeonUtils->GetDungeonRoomsCount());
+	DungeonGenerator.BuildDungeon(RoomsCount);
 	DungeonGenerator.BuildRooms();
 	DungeonGenerator.BuildDoors();
 	CurrentDungeonInfo = DungeonGenerator.GetDungeonInfo();
@@ -471,19 +381,30 @@ void FDungeonGeneratorModule::DGCommandGenerate()
 	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
 
 	UE_LOG(LogTemp, LOGCOLOR, TEXT("A NEW DUNGEON HAS BEEN GENERATED!"));
-	
-	//return FReply::Handled();
 }
 
+void FDungeonGeneratorModule::DGCommandPreview()
+{
+	// Preview Operations
+
+	UWorld* World = GEditor->GetEditorWorldContext().World();
+	USelection* Selection = GEditor->GetSelectedActors();
+
+	AEditorDungeon* EditorDungeon = DungeonUtils->GetSelectedActor<AEditorDungeon>(World, Selection);
+
+	EditorDungeon->Build();
+	
+	UE_LOG(LogTemp, LOGCOLOR, TEXT("HERE'S A PREVIEW OF THE MAP!"));
+}
+
+/* Future Reimplementation
 void FDungeonGeneratorModule::DGCommandSave()
 {
 	// Save Operations
 
 	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
-	
-	UE_LOG(LogTemp, LOGCOLOR, TEXT("CURRENT DUNGEON HAS BEEN SAVED!"));
 
-	//return FReply::Handled();
+	UE_LOG(LogTemp, LOGCOLOR, TEXT("CURRENT DUNGEON HAS BEEN SAVED!"));
 }
 
 void FDungeonGeneratorModule::DGCommandReset()
@@ -492,100 +413,17 @@ void FDungeonGeneratorModule::DGCommandReset()
 
 	CurrentDungeonInfo.Reset();
 	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
-	
+
 	UE_LOG(LogTemp, LOGCOLOR, TEXT("CURRENT DUNGEON RESET TO PREVIOUS STATE!"));
-	
-	//return FReply::Handled();
 }
-
-void FDungeonGeneratorModule::DGCommandPreview()
-{
-	// Preview Operations
-
-	UWorld* World = GEditor->GetEditorWorldContext().World();
-	FRoomGenerator RoomGenerator;
-	
-	if (RoomsRef.Num() > 0)
-	{
-		for (ADungeonRoom* Room : RoomsRef)
-        {
-        	World->DestroyActor(Room);	
-        }
-	}
-	if (DoorsRef.Num() > 0)
-	{
-		for (ADoor* Door : DoorsRef)
-        {
-        	World->DestroyActor(Door);
-        }
-	}
-	
-	RoomsRef.Empty();
-	DoorsRef.Empty();
-
-	//const UDungeonData* DungeonData = DungeonUtils->GetDungeonDataAsset();
-	const UDungeonData* DungeonData = DungeonUtils->GetDungeonData();
-
-	const int32 RoomsCount = DungeonData->PathLength;
-	RoomsRef.Init(nullptr, RoomsCount);
-	for (int32 RoomIndex = 0; RoomIndex < RoomsCount; RoomIndex++)
-	{
-		FRoomInfo RoomInfo;
-		RoomInfo.PresetPath = DungeonData->RoomsPresetPaths[RoomIndex];
-		RoomInfo.CoordinateInGrid = DungeonData->RoomsCoordinate[RoomIndex];
-		RoomInfo.IndexInGrid = DungeonData->RoomsGridIndex[RoomIndex];
-
-		ADungeonRoom* Room = RoomGenerator.Generate(RoomInfo);
-		RoomsRef[RoomIndex] = Room;
-
-		RoomGenerator.Show(Room);
-		RoomGenerator.Locate(Room);
-	}
-	
-	const int32 DoorsCount = DungeonData->DoorsDirection.Num();
-    DoorsRef.Init(nullptr, DoorsCount);
-	for (int32 DoorIndex = 0; DoorIndex < DoorsCount; DoorIndex++)
-	{
-		FDoorInfo DoorInfo;		
-		DoorInfo.SourceRoomIndex = DungeonData->DoorsSourceRoomIndex[DoorIndex];
-		DoorInfo.NextRoomIndex = DungeonData->DoorsNextRoomIndex[DoorIndex];
-		DoorInfo.Direction = static_cast<EWorldDirection>
-			(DungeonData->DoorsDirection[DoorIndex]);
-		
-		ADoor* Door = World->SpawnActor<ADoor>
-				(ADoor::StaticClass(), FTransform::Identity);
-		Door->DoorInfo = DoorInfo;
-		Door->LinkedRoom = RoomsRef[DoorInfo.NextRoomIndex];
-
-		RoomsRef[DoorInfo.SourceRoomIndex]->DoorsRef.Add(Door);
-		DoorsRef[DoorIndex] = Door;
-	}
-	for (int32 RoomIndex = 0; RoomIndex < RoomsCount; RoomIndex++)
-	{
-		RoomGenerator.Show(RoomsRef[RoomIndex]);
-		RoomGenerator.Locate(RoomsRef[RoomIndex]);
-	}
-	
-	UE_LOG(LogTemp, LOGCOLOR, TEXT("HERE'S A PREVIEW OF THE MAP!"));
-	
-	//return FReply::Handled();
-}
+*/
 
 void FDungeonGeneratorModule::DGCommandRoomPreview()
 {
 	USelection* Selection = GEditor->GetSelectedActors();
-	FRoomGenerator RoomGenerator{};
-	ADungeonRoom* SelectedRoom = nullptr;
-	
-	if (UObject* SelectedObject = Selection->GetTop(ADungeonRoom::StaticClass()))
-	{
-		SelectedRoom = Cast<ADungeonRoom>(SelectedObject);
-	}
-	else
-	{
-		UWorld * World = GEditor->GetEditorWorldContext().World();
-		SelectedRoom = World->SpawnActor<ADungeonRoom>(ADungeonRoom::StaticClass(), FTransform::Identity);
-	}
+
+	UWorld* World = GEditor->GetEditorWorldContext().World();
+	AEditorRoom* SelectedRoom = DungeonUtils->GetSelectedActor<AEditorRoom>(World, Selection);
 
 	const URoomPresetPtr SelectedPreset = FDungeonUtilities::Get()->GetSelectedPreset();
 	if (SelectedPreset)
@@ -593,71 +431,39 @@ void FDungeonGeneratorModule::DGCommandRoomPreview()
 		FRoomInfo Info;
 		Info.PresetID = SelectedPreset->PresetID;
 		Info.PresetPath = *SelectedPreset->GetPathName();
-		
-		RoomGenerator.InsertData(SelectedRoom, Info);
-		RoomGenerator.Show(SelectedRoom);
+		Info.PresetName = *SelectedPreset->GetName();
+		Info.RoomName = SelectedPreset->RoomName;
+
+		SelectedRoom->Preview(Info);
 		
 		UE_LOG(LogTemp, LOGCOLOR, TEXT("HERE'S A PREVIEW OF THE SELECTED ROOM!"));
-	}	
-	
-	//return FReply::Handled();
+	}
 }
 
-void FDungeonGeneratorModule::DGCommandRoomSave()
+void FDungeonGeneratorModule::DGCommandRoomSaveChanges()
 {
 	USelection* Selection = GEditor->GetSelectedActors();
-	FRoomGenerator RoomGenerator{};
-	ADungeonRoom* SelectedRoom = nullptr;
+	
+	UWorld* World = GEditor->GetEditorWorldContext().World();
+	AEditorRoom* SelectedRoom = DungeonUtils->GetSelectedActor<AEditorRoom>(World, Selection);
 
-	if (UObject* SelectedObject = Selection->GetTop(ADungeonRoom::StaticClass()))
+	URoomPresetPtr SelectedPreset = DungeonUtils->GetSelectedPreset();
+	if (SelectedPreset)
 	{
-		SelectedRoom = Cast<ADungeonRoom>(SelectedObject);
-	}
-	else
-	{
-		return;
-	}
-
-	// Get Actor's Meshes and save them to selectedRoomPreset, then save the Asset.
-	UStaticMesh* FloorMesh = SelectedRoom->FloorMeshComponent->GetStaticMesh();
-	UStaticMesh* WallsMesh = SelectedRoom->WallsMeshComponent->GetStaticMesh();
-	UStaticMesh* DoorsMesh = SelectedRoom->DoorsMeshComponent->GetStaticMesh();
-	URoomPresetPtr SelectedPresetRef = nullptr;
-	if (SelectedPresetRef)
-	{
-		SelectedPresetRef->FloorMesh = FloorMesh;
-		SelectedPresetRef->WallsMesh = WallsMesh;
-		SelectedPresetRef->DoorsMesh = DoorsMesh;
-
+		SelectedRoom->OverwritePresetData(SelectedPreset);
 		UE_LOG(LogTemp, LOGCOLOR, TEXT("SELECTED ROOM SAVED!"));
 	}
 }
 
-void FDungeonGeneratorModule::DGCommandRoomReset()
+void FDungeonGeneratorModule::DGCommandRoomResetChanges()
 {
 	USelection* Selection = GEditor->GetSelectedActors();
-	FRoomGenerator RoomGenerator{};
-	ADungeonRoom* SelectedRoom = nullptr;
 
-	if (UObject* SelectedObject = Selection->GetTop(ADungeonRoom::StaticClass()))
-	{
-		SelectedRoom = Cast<ADungeonRoom>(SelectedObject);
-	}
-	else
-	{
-		return;
-	}
+	UWorld* World = GEditor->GetEditorWorldContext().World();
+	AEditorRoom* SelectedRoom = DungeonUtils->GetSelectedActor<AEditorRoom>(World, Selection);
 
-	// Reset Actor's Info like Meshes.
+	// Reset Implementation
 
-}
-
-void FDungeonGeneratorModule::RGCommandMakeRoom(const FText& InText, ETextCommit::Type InCommitType)
-{
-	if (InCommitType == ETextCommit::OnEnter)
-	{
-		//DungeonUtils->RGCommandMakeRoom(InText.ToString());
-	}
 }
 
 
@@ -669,10 +475,10 @@ void FDungeonGeneratorModule::RegisterRoomPresetAssetPath(FMenuBuilder& MenuBuil
 	{
 		for (const FAssetData Asset : Data)
 		{
-			const URoomPreset* Preset = Cast<URoomPreset>(Asset.GetAsset());
+			const URoomPresetPtr Preset = Cast<URoomPreset>(Asset.GetAsset());
 			if (Preset)
 			{
-				FDungeonUtilities::Get()->AddPresetPath(Preset->GetPathName());
+				FDungeonUtilities::Get()->AddPresetReference(Preset);
 				UE_LOG(LogTemp, Error, TEXT("RegisterRoomPresetAssetPath Command!!!"));
 			}
 		}
@@ -682,10 +488,10 @@ void FDungeonGeneratorModule::RegisterRoomPresetAssetPath(FMenuBuilder& MenuBuil
 	{
 		for (const FAssetData Asset : Data)
 		{
-			const URoomPreset* Preset = Cast<URoomPreset>(Asset.GetAsset());
+			const URoomPresetPtr Preset = Cast<URoomPreset>(Asset.GetAsset());
 			if (Preset)
 			{
-				FDungeonUtilities::Get()->DeletePresetPath(Preset->GetPathName());
+				FDungeonUtilities::Get()->DeletePresetReference(Preset);
 				UE_LOG(LogTemp, Error, TEXT("UnegisterRoomPresetAssetPath Command!!!"));
 			}
 		}
@@ -705,90 +511,54 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 {
 	FToolBarBuilder ToolbarBuilder(MakeShared<FUICommandList>(), FMultiBoxCustomization::None);
 
+	TSharedRef<SWidget> DungeonCommandsTitle =
+		SNew(SBox).VAlign(VAlign_Fill).HAlign(HAlign_Center)
+		[
+			SNew(STextBlock).Text(LOCTEXT("DungeonCommandsText", "Dungeon \nCommands:"))
+		];
+	TSharedRef<SWidget> RoomCommandsTitle =
+		SNew(SBox).VAlign(VAlign_Fill).HAlign(HAlign_Center)
+		[
+			SNew(STextBlock).Text(LOCTEXT("RoomCommandsText", "Room \nCommands:"))
+		];
+
+	ToolbarBuilder.AddWidget(DungeonCommandsTitle, NAME_None);
 	const FText DGenerateText = LOCTEXT("ToolbarGenerate", "Generate");
 	ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
-	(this, &FDungeonGeneratorModule::DGCommandGenerate/*CreateLambda([this]()
-	{
-		DGCommandGenerate();
-	}*/)), NAME_None, DGenerateText);
-	
-	ToolbarBuilder.AddSeparator();
+	(this, &FDungeonGeneratorModule::DGCommandGenerateDungeonData)), NAME_None, DGenerateText);
 	
 	// Dungeon Generation Features
-	const FText DShowPreviewText = LOCTEXT("ToolbarShowPreview", "Preview");
+	const FText DShowPreviewText = LOCTEXT("ToolbarShowPreviewText", "Preview");
 	ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
-	(this, &FDungeonGeneratorModule::DGCommandPreview/*CreateLambda([this]()
-	{
-		DGCommandPreview();
-	}*/)), NAME_None, DShowPreviewText);
-	const FText DSaveChangesText = LOCTEXT("ToolbarSaveText", "Save");
-	ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
-	(this, &FDungeonGeneratorModule::DGCommandSave/*CreateLambda([this]()
-	{
-		DGCommandSave();
-	}*/)), NAME_None, DSaveChangesText);
-	const FText DResetText = LOCTEXT("ToolbarResetText", "Reset");
-	ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
-	(this, &FDungeonGeneratorModule::DGCommandReset/*CreateLambda([this]()
-	{
-		DGCommandReset();
-	}*/)), NAME_None, DResetText);
+	(this, &FDungeonGeneratorModule::DGCommandPreview)), NAME_None, DShowPreviewText);
+	
+	// Future Implementation
+	//const FText DSaveChangesText = LOCTEXT("ToolbarSaveText", "Save");
+	//ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
+	//(this, &FDungeonGeneratorModule::DGCommandSave)), NAME_None, DSaveChangesText);
+	//const FText DResetText = LOCTEXT("ToolbarResetText", "Reset");
+	//ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
+	//(this, &FDungeonGeneratorModule::DGCommandReset)), NAME_None, DResetText);
 	
 	ToolbarBuilder.AddSeparator();
 	
 	// Room Generation Features
-	const FText RShowPreviewText = LOCTEXT("ToolbarShowPreview", "Preview");
+	ToolbarBuilder.AddWidget(RoomCommandsTitle, NAME_None);
+	const FText RShowPreviewText = LOCTEXT("ToolbarShowPreviewText", "Preview");
 	ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
-	(this, &FDungeonGeneratorModule::DGCommandRoomPreview/*CreateLambda([this]()
-	{
-		DGCommandRoomPreview();
-	}*/)), NAME_None, RShowPreviewText);
+	(this, &FDungeonGeneratorModule::DGCommandRoomPreview)), NAME_None, RShowPreviewText);
+
 	const FText RSaveChangesText = LOCTEXT("ToolbarSaveText", "Save");
 	ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
-	(this, &FDungeonGeneratorModule::DGCommandRoomSave/*CreateLambda([this]()
-	{
-		
-	}*/)), NAME_None, RSaveChangesText);
+	(this, &FDungeonGeneratorModule::DGCommandRoomSaveChanges)), NAME_None, RSaveChangesText);
+
 	const FText RResetText = LOCTEXT("ToolbarResetText", "Reset");
 	ToolbarBuilder.AddToolBarButton(FUIAction(FExecuteAction::CreateRaw
-	(this, &FDungeonGeneratorModule::DGCommandRoomReset/*CreateLambda([this]()
-	{
-		
-	}*/)), NAME_None, RResetText);
+	(this, &FDungeonGeneratorModule::DGCommandRoomResetChanges)), NAME_None, RResetText);
 
 	ToolbarBuilder.AddSeparator();
 	
-	const TSharedRef<SWidget> Toolbar = ToolbarBuilder.MakeWidget();	
-
-	//const TSharedRef<SRoomSelectorCombo<FString>> RoomSelectorCombo =
-	//	SNew(SRoomSelectorCombo<FString>).Source(DungeonUtils->GetPresetPaths());
-	//RoomSelectorCombo->OnOptionSelected.BindLambda([this](const FString PresetPath)
-	//{
-	//	FAssetData Asset = FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(*PresetPath);
-	//
-	//	DungeonUtils->SelectedPreset = Cast<URoomPreset>(Asset.GetAsset());
-	//});
-	const TSharedRef<SAssetDropTarget> AssetDropBox =
-		SNew(SAssetDropTarget).OnAssetDropped_Lambda([this](UObject* Selection)
-		{
-			URoomPreset* CastObject = Cast<URoomPreset>(Selection);
-			if (CastObject)
-			{
-				DungeonUtils->SelectedPreset = Cast<URoomPreset>(Selection);
-			}
-		})
-		[
-			SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
-			[
-				SNew(STextBlock).Text_Lambda([this]() -> FText
-				{
-					return DungeonUtils->SelectedPreset ?
-						FText::FromString(DungeonUtils->SelectedPreset->GetName())
-						: LOCTEXT("None", "None");
-				})
-			]
-		];
-		//.OnAssetDropped_Raw(DungeonUtils, &DungeonUtilities::SetSelectedPreset);
+	const TSharedRef<SWidget> Toolbar = ToolbarBuilder.MakeWidget();
 
 
 	const int32 DGSpacerSize = 10;
@@ -828,107 +598,103 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 				+ SVerticalBox::Slot().AutoHeight()
 				.Padding(HPadding, 0, 0, 0)
 				[
-					//SNew(SBox)
-					//.HAlign(HAlign_Left)
-					//.VAlign(VAlign_Top)
-					//[
-						//SNew(SHorizontalBox) // Piles of Commands
+					SNew(SVerticalBox)
 
-						// Dungeon
-						//+ SHorizontalBox::Slot().AutoWidth().HAlign(HAlign_Fill)
-						//.Padding(0, 0, HPadding, 0)
-						//[
-							SNew(SVerticalBox)
+					// Set Dungeon Data Folder Path
+					+ SVerticalBox::Slot().AutoHeight()
+					.Padding(0, VPadding, 0, 0)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth()
+						.Padding(0, 0, HPadding, 0)
+						[
+							SNew(STextBlock).Text(LOCTEXT("SetDungeonFolderPathText", "Set Dungeon Folder Path:"))
+						]
+						+ SHorizontalBox::Slot()
+						.VAlign(VAlign_Fill)
+						.Padding(0, 0, HPadding, 0)
+						[
+							SNew(SEditableTextBox).HintText(LOCTEXT("PathText", "Path"))
+							.OnTextCommitted_Lambda([this](const FText& InText, ETextCommit::Type InCommitType)
+							{
+								if (InCommitType == ETextCommit::OnEnter)
+								{
+									DungeonUtils->SetDungeonDataPath(*InText.ToString());
+									DungeonUtils->SaveGenerationSettings();
+								}
+							})
+						]
+					]		
 
-							// Set Dungeon Data Folder Path
-							+ SVerticalBox::Slot().AutoHeight()
-							.Padding(0, VPadding, 0, 0)
+					// Set Rooms count for your next Dungeon
+					+ SVerticalBox::Slot().AutoHeight()
+					.Padding(0, VPadding, 0, 0)
+					[
+						SNew(SHorizontalBox)
+						+ SHorizontalBox::Slot().AutoWidth()
+						.Padding(0, 0, HPadding, 0)
+						[
+							SNew(STextBlock).Text(LOCTEXT("SetRoomsCount", "Set Dungeon Rooms Count:"))
+						]
+						+ SHorizontalBox::Slot().VAlign(VAlign_Center).HAlign(HAlign_Left)
+						.Padding(0, 0, HPadding, 0)
+						[
+							SNew(SEditableTextBox).HintText(LOCTEXT("CountText", "Count"))
+							.OnTextCommitted_Lambda([this](const FText& InText, ETextCommit::Type InCommitType)
+							{
+								if (InCommitType == ETextCommit::OnEnter)
+								{
+									DungeonUtils->SetDungeonRoomsCount(FCString::Atoi(*InText.ToString()));
+									DungeonUtils->SaveGenerationSettings();
+								}
+							})
+						]
+					]
+
+					// Drag and Drop Room Preset Asset
+					+ SVerticalBox::Slot()
+					.Padding(0, VPadding, HPadding, 0)
+					[
+						SNew(SBox).HeightOverride(50).HAlign(HAlign_Fill)
+						[
+							SNew(SSplitter).Orientation(EOrientation::Orient_Horizontal)
+							+ SSplitter::Slot()
 							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot().AutoWidth()
-								.Padding(0, 0, HPadding, 0)
-								[
-									SNew(STextBlock).Text(LOCTEXT("SetDungeonFilePathText", "Set Dungeon File Path:"))
-								]
-								+ SHorizontalBox::Slot()
-								.VAlign(VAlign_Fill)
-								.Padding(0, 0, HPadding, 0)
-								[
-									SNew(SEditableTextBox).HintText(LOCTEXT("PathText", "Path"))
-									.OnTextCommitted_Lambda([this](const FText& InText, ETextCommit::Type InCommitType)
-									{
-										//DungeonUtils->DungeonDataPath = *InText.ToString();
-										//DungeonUtils->CurrentSettings->DungeonDataFilePath = *InText.ToString();
-										DungeonUtils->SetDungeonDataPath(*InText.ToString());
-										DungeonUtils->SaveGenerationSettings();
-									})
-								]
-							]		
-
-							// Set Rooms count for your next Dungeon
-							+ SVerticalBox::Slot().AutoHeight()
-							.Padding(0, VPadding, 0, 0)
-							[
-								SNew(SHorizontalBox)
-								+ SHorizontalBox::Slot().AutoWidth()
-								.Padding(0, 0, HPadding, 0)
-								[
-									SNew(STextBlock).Text(LOCTEXT("SetRoomsCount", "Set Dungeon Rooms Count:"))
-								]
-								+ SHorizontalBox::Slot().VAlign(VAlign_Center).HAlign(HAlign_Left)
-								.Padding(0, 0, HPadding, 0)
-								[
-									SNew(SEditableTextBox).HintText(LOCTEXT("CountText", "Count"))
-									.OnTextCommitted_Lambda([this](const FText& InText, ETextCommit::Type InCommitType)
-									{
-										//DungeonUtils->DungeonRoomsCount = FCString::Atoi(*InText.ToString());
-										//DungeonUtils->CurrentSettings->InitialRoomsCount = FCString::Atoi(*InText.ToString());
-										DungeonUtils->SetDungeonRoomsCount(FCString::Atoi(*InText.ToString()));
-										DungeonUtils->SaveGenerationSettings();
-									})
-								]
-							]
-
-							// Drag and Drop Room Preset Asset
-							+ SVerticalBox::Slot()//.AutoHeight()
-							.Padding(0, VPadding, HPadding, 0)
-							[								
-								SNew(SSplitter).Orientation(EOrientation::Orient_Horizontal)
-								+ SSplitter::Slot()
+								SNew(SBox).HAlign(HAlign_Fill).VAlign(VAlign_Center)
 								[
 									SNew(STextBlock).Text(LOCTEXT("DragAndDropText", "Drop your Room Preset Asset here ->"))
 								]
-								+ SSplitter::Slot()
+							]
+							+ SSplitter::Slot()
+							[
+								SNew(SBorder)
 								[
-									SNew(SBorder)
+									SNew(SBox).HAlign(HAlign_Fill).VAlign(VAlign_Fill)
 									[
-										SNew(SBox).HAlign(HAlign_Fill).VAlign(VAlign_Center)
-										[
-											SNew(SAssetDropTarget).OnAssetDropped_Lambda([this](UObject* Selection)
+										SNew(SAssetDropTarget).OnAssetDropped_Lambda([this](UObject* Selection)
+										{
+											URoomPreset* CastObject = Cast<URoomPreset>(Selection);
+											if (CastObject)
 											{
-												URoomPreset* CastObject = Cast<URoomPreset>(Selection);
-												if (CastObject)
-												{
-													DungeonUtils->SelectedPreset = Cast<URoomPreset>(Selection);
-												}
-											})
+												DungeonUtils->SelectedPreset = Cast<URoomPreset>(Selection);
+											}
+										})
+										[
+											SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
 											[
-												SNew(SBox).HAlign(HAlign_Center).VAlign(VAlign_Center)
-												[
-													SNew(STextBlock).Text_Lambda([this]() -> FText
-													{
-														return DungeonUtils->SelectedPreset ?
-															FText::FromString(DungeonUtils->SelectedPreset->GetName())
-															: LOCTEXT("None", "None");
-													})
-												]												
-											]
+												SNew(STextBlock).Text_Lambda([this]() -> FText
+												{
+													return DungeonUtils->SelectedPreset ?
+														FText::FromString(DungeonUtils->SelectedPreset->GetName())
+														: LOCTEXT("None", "None");
+												})
+											]												
 										]
 									]
 								]
 							]
-						//]
-					//]
+						]
+					]
 				]
 				+ SVerticalBox::Slot().AutoHeight()
 				[
@@ -942,12 +708,10 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 		]
 		
 		// Queries
-		+SVerticalBox::Slot()
+		+SVerticalBox::Slot().VAlign(VAlign_Top)
 		.Padding(HPadding, 0, HPadding, 0)
 		[
 			SNew(SBorder)
-			//.HAlign(HAlign_Left)
-			//.VAlign(VAlign_Top)
 			[
 				SNew(SVerticalBox)
 				+ SVerticalBox::Slot().AutoHeight()
@@ -980,10 +744,8 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					[
 						SNew(STextBlock).Text_Lambda([this]() -> FText
 						{
-							//return LOCTEXT("QueryDungeonRoomsText", "Dungeon Rooms Count: 0");
-							return FText::Format(
-								LOCTEXT("QueryDungeonRoomsText", "Dungeon Rooms Count: {0}"),
-									FText::FromString(FString::FromInt(DungeonUtils->GetDungeonRoomsCount())));
+							return FText::Format(LOCTEXT("QueryDungeonRoomsText", "Dungeon Rooms Count: {0}"),
+												 FText::FromString(FString::FromInt(DungeonUtils->GetDungeonRoomsCount())));
 						})
 					]
 
@@ -993,13 +755,11 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 					[
 						SNew(STextBlock).Text_Lambda([this]() -> FText
 						{
-							//return LOCTEXT("QueryAssetFilesCountText", "Asset Files : 0");
-							return FText::Format(
-								LOCTEXT("QueryNumOfAssetFiles", "Preset Asset Files: {0}"),
-									DungeonUtils->GetPresetFilesCount());
+							return FText::Format(LOCTEXT("QueryNumOfAssetFiles", "Preset Asset Files: {0}"),
+												 DungeonUtils->GetPresetFilesCount());
 						})
 					]
-					+ SVerticalBox::Slot()//.AutoHeight()
+					+ SVerticalBox::Slot()
 					[
 						SNew(SSpacer).Size(VPadding)
 					]

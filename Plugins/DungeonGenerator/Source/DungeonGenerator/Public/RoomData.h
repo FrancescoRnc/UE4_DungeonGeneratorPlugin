@@ -44,7 +44,7 @@ class DUNGEONGENERATOR_API URoomPreset : public UObject
 	int32 PresetID = -1;
 	
 	UPROPERTY(EditAnywhere)
-	FString RoomName;
+	FName RoomName;
 	
 	UPROPERTY(EditAnywhere)
 	UStaticMesh* FloorMesh = nullptr;
@@ -58,7 +58,6 @@ class DUNGEONGENERATOR_API URoomPreset : public UObject
 	UFUNCTION(BlueprintCallable)
 	void DoThings();
 
-	void Serialize(FArchive& Ar) override;
 };
 
 
@@ -91,8 +90,7 @@ class DUNGEONGENERATOR_API FRoomPresetAssetTypeAction : public FAssetTypeActions
 		return FColor::Red;
 	}
 
-
-	//private:
+//private:
 
 	//static EAssetTypeCategories::Type AssetTypeCategory;
 };

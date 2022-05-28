@@ -26,14 +26,6 @@ void ADungeonRoom::BeginPlay()
 	Super::BeginPlay();
 }
 
-
-// Called every frame
-//void ADungeonRoom::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//}
-
 FVector ADungeonRoom::GetCardinalLocation(const EWorldDirection Direction) const
 {
 	FName DirectionName(NAME_None);

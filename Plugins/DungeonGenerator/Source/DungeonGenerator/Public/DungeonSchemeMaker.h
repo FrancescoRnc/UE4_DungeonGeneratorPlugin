@@ -2,6 +2,7 @@
 
 #pragma once
 #include "CoreMinimal.h"
+#include "GeneratorMethod.h"
 
 /**
  * Here's a Legend for Direction values:
@@ -17,41 +18,6 @@ enum class ECellDirection : uint8
 };
 
 
-/**
- * IGeneratorMethod interface
- */
-class DUNGEONGENERATOR_API IGeneratorMethod
-{
-public:
-
-	virtual struct FGrid Generate(const FGrid EmptyGridSample, struct FGridMakerInfo& MakerInfo) = 0;
-
-	const static int32 GetOppositeIndex(const int32 Source);
-	const static int32 GetPatternFromIndex(const int32 Index);
-};
-
-class DUNGEONGENERATOR_API FStandardGeneratorMethod : public IGeneratorMethod
-{
-	public:
-
-	//FStandardGeneratorMethod() = delete;
-	//
-	//FStandardGeneratorMethod(const FIntVector InGridSize) :
-	//	GridSize{InGridSize} 
-	//{
-	//
-	//}
-
-	virtual FGrid Generate(const FGrid EmptyGridSample, FGridMakerInfo& MakerInfo) override;
-
-	//FORCEINLINE void GetMinMaxCoordinates(const FGrid& Grid, FIntVector& OutMin, FIntVector& OutMax) const
-	//{
-	//	OutMin = ;
-	//	OutMax = ;
-	//}
-};
-
-
 const static TArray<FIntVector> Directions
 {
 	{ 00, 01, 0 },
@@ -63,19 +29,21 @@ const static TArray<FIntVector> Directions
 
 struct DUNGEONGENERATOR_API FGridCell
 {
-	FIntVector Coordinate = {0, 0, 0};
+	FIntVector Coordinate = {-1, -1, 0};
 	int32 Index = -1;	
 	int32 PathOrder = 0; // Starts with 1
-	int32 CellPattern = 0; // 0 stands for an empty Cell
+	int32 CellPattern = -1; // 0 stands for an empty Cell
 	
 };
 
+// Struct that represents an empty 1D Grid to be filled with usefull data for the generation of a Dungeon
 struct DUNGEONGENERATOR_API FGrid
 {
 	FGrid();
 	FGrid(FIntVector NewSize) :
 		Size{ NewSize }, Length{ NewSize.X * NewSize.Y }
 	{
+		Size.Z = 0;
 		Cells.Init({}, Length);
 		for (int32 Index = 0; Index < Length; Index++)
 		{
@@ -104,7 +72,7 @@ struct DUNGEONGENERATOR_API FGrid
 		return Cells[Index];
 	}
 
-	FGridCell& GetCell(const int32 X, const int32 Y)
+	FORCEINLINE FGridCell& GetCell(const int32 X, const int32 Y)
 	{
 		const int32 Index = X + (Y * Size.X);
 		return Cells[Index];
@@ -122,26 +90,31 @@ struct DUNGEONGENERATOR_API FGridMakerInfo
 	public:
 
 	FGridMakerInfo() = default;
-	FGridMakerInfo(const int32 Rooms) :
-		GridRadius{ Rooms + 1 }, RoomsCount{ Rooms }
+	FGridMakerInfo(const int32 RoomsCount) :
+		GridRadius{ RoomsCount + 1 }, RoomsCount{ RoomsCount }
 	{
-		const int32 Side = (GridRadius * 2) + 1;
-		Size.Y = Size.X = Side;
-		Size.Z = Side * Side;
+		if (RoomsCount > 0)
+		{
+			const int32 Side = (GridRadius * 2) + 1;
+			Size.Y = Size.X = Side;
+			Size.Z = Side * Side;
+		}		
+
+		// Here's an example with straight paths in every direction:
+		// 2 Rooms: Side = ((2+1) * 2) + 1 = 7
+		// X is the very first room, not included in Rooms. here's why (Rooms + 1)
+		// 0 0 0 0 0 0 0 
+		// 0 0 0 2 0 0 0
+		// 0 0 0 1 0 0 0
+		// 0 2 1 X 1 2 0
+		// 0 0 0 1 0 0 0
+		// 0 0 0 2 0 0 0
+		// 0 0 0 0 0 0 0
 	}
-
-	//void CheckMinMaxCoordinate(const FIntVector Coordinate);
-
-	
-
-	//private:
 
 	int32 GridRadius{ 0 };
 	int32 RoomsCount{ 0 };
 	FIntVector Size{ 0,0,0 }; // Z Value stores the Length of the Grid Array.
-
-	//FIntVector StartPoint, EndPoint;
-	FIntVector MinPoint{ 999,999,0 }, MaxPoint{ 0,0,0 };
 };
 
 
@@ -153,53 +126,33 @@ class DUNGEONGENERATOR_API FDungeonGridMaker
 {
 public:
 	FDungeonGridMaker();
-	FDungeonGridMaker(const int32 Rooms, IGeneratorMethod* InMethod) :
-		MakerInfo{FGridMakerInfo(Rooms)}, Method{InMethod}
+	FDungeonGridMaker(const int32 RoomsCount, IGeneratorMethod* InMethod) :
+		Rooms{RoomsCount}, MakerInfo{FGridMakerInfo(RoomsCount)}, Method{InMethod}
 	{
-		if (Rooms <= 0)
-		{
-			return;
-		}
 
-		//const int32 Side = (GridRadius * 2) + 1;
-		//MakerInfo.Size.Y = MakerInfo.Size.X = Side;
-		//MakerInfo.Size.Z = Side * Side;
-		//Size.Y = Size.X = Side;
-		//Size.Z = Side * Side;
-		
-		//InGrid = MakeNewGrid(Size);
-		FGrid EmptyGrid(MakerInfo.Size);
-		InGrid = Method->Generate(EmptyGrid, MakerInfo);
-
-		OutGrid = CropGrid(InGrid);
-		LinkGridCells(OutGrid);
 	}
 	~FDungeonGridMaker();
 
-	FGrid GetGrid();
+	FORCEINLINE FGrid GetGrid()
+	{
+		return OutGrid;
+	}
+
+	FGrid GetFromMethod();
+	FGrid Make();
+
 	void DebugGrid(const FGrid FullGrid);
 	
-	//const static int32 GetOppositeIndex(const int32 Source);
-	//const static int32 GetPatternFromIndex(const int32 Index);
-	
-	TArray<TPair<int32, int32>> GetDirectionPairs(FGrid& Grid);
 	
 private:
-	//void CheckMinMaxCoordinate(const FIntVector Coordinate);
-	//FGrid MakeNewGrid(const FIntVector GridSize);
 	FGrid CropGrid(const FGrid& SourceGrid);
 	void LinkGridCells(FGrid& Grid);	
 	
-	IGeneratorMethod* Method;
+	int32 Rooms = 0;
 	FGridMakerInfo MakerInfo{};
+	IGeneratorMethod* Method = nullptr;
 
-	//int32 GridRadius{0};
-	//int32 RoomsCount{0};	
-	//FIntVector Size; // Z Value stores the Length of the Grid Array.
-	
 	FGrid InGrid = {};
-	FGrid OutGrid = {};
-	//FIntVector StartPoint, EndPoint;
-	FIntVector MinPoint{999,999,0}, MaxPoint{0,0,0};	
+	FGrid OutGrid = {};	
 	
 };

@@ -62,14 +62,10 @@ void UGenerationSettings::Serialize(FArchive& Ar)
 		Ar << RoomPresetFolderPath;
 		Ar << InitialRoomsCount;
 		Ar << PresetsCount;
-		//Ar << InitialPresetFilesCount;
 		for (FString Path : RoomPresetsPaths)
 		{
 			Ar << Path;
 		}
-		//Ar << RoomPresetsPaths;
-
-		//UE_LOG(LogGenSettings, Warning, TEXT("Serialization Is Saving"), Ar.IsSaving());
 	}
 	else if (Ar.IsLoading())
 	{
@@ -77,7 +73,6 @@ void UGenerationSettings::Serialize(FArchive& Ar)
 		FString LoadedRoomPresetFolderPath;
 		uint32  LoadedRoomsFilesCount;
 		int32  LoadedInitialPresetFilesCount;
-		//TArray<FString> LoadedRoomPresetsPaths;
 
 		Ar << LoadedDungeonDataFolderPath;
 		Ar << LoadedRoomPresetFolderPath;
@@ -89,17 +84,9 @@ void UGenerationSettings::Serialize(FArchive& Ar)
 			Ar << Path;
 			RoomPresetsPaths.Add(Path);
 		}
-		// AGGIUSTA LA SERIALIZZAZIONE
-		//LoadedRoomPresetsPaths.BulkSerialize(Ar);
-		//Ar.Serialize(LoadedRoomPresetsPaths, 0);
-		//Ar << LoadedRoomPresetsPaths;
 
 		DungeonDataFilePath = LoadedDungeonDataFolderPath;
 		RoomPresetFolderPath = LoadedRoomPresetFolderPath;
 		InitialRoomsCount = LoadedRoomsFilesCount;
-		//InitialPresetFilesCount = LoadedInitialPresetFilesCount;
-		//RoomPresetsPaths = LoadedRoomPresetsPaths;
-
-		//UE_LOG(LogGenSettings, Warning, TEXT("Serialization Is Loading"), Ar.IsLoading());
 	}
 }

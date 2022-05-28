@@ -17,33 +17,15 @@ DECLARE_LOG_CATEGORY_EXTERN(LogDunGenExecQueryInfo,		All, All);
 #define LOGCOLOR Display
 
 
-
 /**
-* FRoomGenerator - This class makes a new ADungeonRoom Instance,
-* with 
-* 
-*/
-class FRoomGenerator
-{
-public:
-	FRoomGenerator();
-	
-	class ADungeonRoom* Generate(const FRoomInfo& Info);
-	void InsertData(ADungeonRoom* Room, const FRoomInfo& Info);	
-	void Locate(ADungeonRoom* Room);
-	void Show(ADungeonRoom* Room);	
-};
-
-
-/**
-* FDungeonGenerator CLass
+* Standard class that generates a Dungeon given some Information
 * 
 */
 class FDungeonGenerator : public IDungeonBuilder
 {
 public:
 	FDungeonGenerator();
-	//virtual ~FDungeonGenerator() override;
+	virtual ~FDungeonGenerator() override;
 
 	/** IDungeonBuilder implementation */
 	virtual void BuildDungeon(const int32 RoomsCount) override;
@@ -59,11 +41,12 @@ private:
 	FDungeonInfo OutDungeonInfo;
 };
 
+// Custom Implementation
 class FRuntimeDungeonGenerator : public IDungeonBuilder
 {
 public:
 	FRuntimeDungeonGenerator();
-	//virtual ~FDungeonGenerator() override;
+	virtual ~FRuntimeDungeonGenerator() override;
 
 	/** IDungeonBuilder implementation */
 	virtual void BuildDungeon(const int32 RoomsCount) override;
@@ -79,7 +62,7 @@ private:
 
 
 /**
-* FDungeonGeneratorModule Module Class
+* 
 */
 class FDungeonGeneratorModule : public IModuleInterface, public FSelfRegisteringExec
 {
@@ -92,37 +75,38 @@ public:
 	/** FSelfRegisteringExec implementation */
 	virtual bool Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDevice& Ar) override;
 
+	// Functions used as Delegates to extend the Content Browser
 	void RegisterRoomPresetAssetPath(FMenuBuilder& MenuBuilder, const TArray<FAssetData> Data);
-	void DGCommandRegisterPresetsPath(const TArray<FAssetData>& Data);
 	TSharedRef<FExtender> ExtendContentBrowser(const TArray<FAssetData>& Data);
+
+	// Function used as Delegate to spawn the Plugin Tab
 	TSharedRef<class SDockTab> SpawnNomadTab(const FSpawnTabArgs& TabSpawnArgs);
 
 
 private:	
 	const FName DungeonGeneratorTabName = TEXT("Dungeon Generator");
 	
-	//TSharedPtr<FDungeonGenerator> DungeonGenerator;
-	//TSharedPtr<FRoomGenerator> RoomGenerator;
 	TSharedPtr<FDungeonUtilities> DungeonUtils;
 	
+	// Local variables used to track the current generation actions.
 	FDungeonInfo CurrentDungeonInfo{};
 	UDungeonData* CurrentDungeonData = nullptr;
-	TArray<FRoomInfo> RoomsInfo{};
-	TArray<FDoorInfo> DoorsInfo{};
-
-	TArray<ADungeonRoom*> RoomsRef{};
-	TArray<class ADoor*> DoorsRef{};
 	
 
 public:
-	void DGCommandGenerate();
+	// Here are some Functions used by the Plugin's Toolbar to manage your Dungeon and Room customization.
+	// * DG stands for Dungeon Generator, in order to mark specific Features as Commands.
+	// ** Commands related to "Preview" give an in World representation (on Editor in this case) of our Dungeon or Room
+
+	void DGCommandGenerateDungeonData();
+	void DGCommandPreview();
+	
+	void DGCommandRoomPreview();
+	void DGCommandRoomSaveChanges();
+	void DGCommandRoomResetChanges();
+	
+	/* Future Reimplementation
     void DGCommandSave();
 	void DGCommandReset();
-	void DGCommandPreview();
-	void DGCommandRoomPreview();
-	void DGCommandRoomSave();
-	void DGCommandRoomReset();
-	
-	void RGCommandMakeRoom(const FText& InText, ETextCommit::Type InCommitType);
-
+	*/
 };

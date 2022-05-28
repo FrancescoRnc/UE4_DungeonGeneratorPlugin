@@ -6,16 +6,16 @@
 #include "GameFramework/Actor.h"
 #include "DungeonData.h"
 #include "DungeonUtilities.h"
-#include "EditorDuneon.generated.h"
+#include "EditorDungeon.generated.h"
 
 UCLASS()
-class DUNGEONGENERATOR_API AEditorDuneon : public AActor, public IDungeonBuilder
+class DUNGEONGENERATOR_API AEditorDungeon : public AActor, public IDungeonBuilder
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
-	AEditorDuneon();
+	AEditorDungeon();
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UInstancedStaticMeshComponent* DoorInstancesComponent = nullptr;
@@ -26,26 +26,31 @@ public:
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TMap<int32, UInstancedStaticMeshComponent*> WallsMeshInstances{};
 
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	float InstancesSpaceGap = 5000.f;
 
-	void AddNewRoomInstanceMeshComponent(const int32 PresetID);
+	protected:
+	// Called when the game starts or when spawned
+	//virtual void BeginPlay() override;
+
+	void AddNewRoomInstancedMeshComponents(const int32 PresetID);
 	void SpawnNewRoom(const int32 PresetID, const FVector Position);
 
 
-public:	
+	public:
 	// Called every frame
 	//virtual void Tick(float DeltaTime) override;
-
 
 	virtual void BuildDungeon(const int32 RoomsCount) override;
 	virtual void BuildRooms() override;
 	virtual void BuildDoors() override;
 
 	UFUNCTION(BlueprintCallable)
-		void Build();
+	void Build();
+
+	void ClearInstances();
 
 	private:
 	TSoftObjectPtr<UDungeonData> DungeonDataRef;
+	FDungeonInfo DungeonInfo{};	
 };

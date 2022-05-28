@@ -26,13 +26,6 @@ void ADoor::BeginPlay()
 	
 }
 
-// Called every frame
-//void ADoor::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//}
-
 
 void ADoor::Teleport(ACharacter* Character)
 {
