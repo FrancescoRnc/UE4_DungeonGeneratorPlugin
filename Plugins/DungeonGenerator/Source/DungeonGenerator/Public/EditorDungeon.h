@@ -8,6 +8,10 @@
 #include "DungeonUtilities.h"
 #include "EditorDungeon.generated.h"
 
+
+/**
+* Actor used to edit an URoomPreset Asset on Editor World 
+*/
 UCLASS()
 class DUNGEONGENERATOR_API AEditorDungeon : public AActor, public IDungeonBuilder
 {
@@ -25,22 +29,28 @@ public:
 
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	TMap<int32, UInstancedStaticMeshComponent*> WallsMeshInstances{};
-
-	UPROPERTY(BlueprintReadWrite, EditAnywhere)
+	
+	/**
+	* Used to separate all Floor and Walls Mesh instances
+	*/
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category="Dungeon Editing")
 	float InstancesSpaceGap = 5000.f;
 
-	protected:
-	// Called when the game starts or when spawned
-	//virtual void BeginPlay() override;
 
+protected:
+	/**
+	* @param PresetID: Given an ID of a RoomPreset, Add a new Instanced Mesh Component with this RoomPreset's Static Mesh.
+	*/
 	void AddNewRoomInstancedMeshComponents(const int32 PresetID);
+
+	/**
+	* @param PresetID: ID used to search, or add if no exists, the right Instanced Mesh Component for instancing a new Mesh;
+	* @param Position: Location to spawn the new Mesh instance.
+	*/
 	void SpawnNewRoom(const int32 PresetID, const FVector Position);
 
 
-	public:
-	// Called every frame
-	//virtual void Tick(float DeltaTime) override;
-
+public:
 	virtual void BuildDungeon(const int32 RoomsCount) override;
 	virtual void BuildRooms() override;
 	virtual void BuildDoors() override;
@@ -48,9 +58,13 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void Build();
 
+	/**
+	* Function used to clear all already spawned Mesh instances of all Instanced Mesh Components.
+	*/
 	void ClearInstances();
 
-	private:
+
+private:
 	TSoftObjectPtr<UDungeonData> DungeonDataRef;
 	FDungeonInfo DungeonInfo{};	
 };

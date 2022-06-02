@@ -14,17 +14,7 @@ ARuntimeDungeon::ARuntimeDungeon()
 void ARuntimeDungeon::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	//Build();
 }
-
-// Called every frame
-//void ARuntimeDungeon::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//}
-
 
 void ARuntimeDungeon::Build()
 {
@@ -35,7 +25,6 @@ void ARuntimeDungeon::Build()
 
 void ARuntimeDungeon::BuildDungeon(const int32 RoomsCount)
 {
-	//DungeonDataRef = FDungeonUtilities::Get()->GetDungeonDataAsset();
 	DungeonDataRef = FDungeonUtilities::Get()->GetDungeonData();
 }
 

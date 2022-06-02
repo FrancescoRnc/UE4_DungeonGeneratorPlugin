@@ -26,7 +26,7 @@ const static TArray<FIntVector> Directions
 	{ 01, 00, 0 }
 };
 
-
+// Struct that stores data about a physical Cell in a Grid.
 struct DUNGEONGENERATOR_API FGridCell
 {
 	FIntVector Coordinate = {-1, -1, 0};
@@ -84,7 +84,7 @@ struct DUNGEONGENERATOR_API FGrid
 	void CheckMinMaxCoordinate(const FIntVector Coordinate);
 };
 
-
+// Struct that stores data about for a GridMaker Object.
 struct DUNGEONGENERATOR_API FGridMakerInfo
 {
 	public:
@@ -119,8 +119,7 @@ struct DUNGEONGENERATOR_API FGridMakerInfo
 
 
 /**
-* Class that creates the base Scheme for our new dungeon.
-* Each Grid is squared and with Odd length sides.
+* Class that creates the base Scheme for our new dungeon, and given a specific Method gives us the final result of our Dungeon.
 */
 class DUNGEONGENERATOR_API FDungeonGridMaker
 {
@@ -150,7 +149,7 @@ private:
 	
 	int32 Rooms = 0;
 	FGridMakerInfo MakerInfo{};
-	IGeneratorMethod* Method = nullptr;
+	IGeneratorMethod* Method = nullptr; // This determines the result of our Dungeon.
 
 	FGrid InGrid = {};
 	FGrid OutGrid = {};	

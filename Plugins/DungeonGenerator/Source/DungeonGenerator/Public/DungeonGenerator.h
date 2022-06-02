@@ -14,18 +14,19 @@ DECLARE_LOG_CATEGORY_EXTERN(LogDunGenBuildError,		All, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogDunGenExecQueryFiles,	All, All);
 DECLARE_LOG_CATEGORY_EXTERN(LogDunGenExecQueryInfo,		All, All);
 
-#define LOGCOLOR Display
-
 
 /**
-* Standard class that generates a Dungeon given some Information
-* 
+* Standard class that generates a Dungeon given some Information like a UDungeonData Object and an FRoomInfo Object.
 */
-class FDungeonGenerator : public IDungeonBuilder
+class FDungeonDataGenerator : public IDungeonBuilder
 {
 public:
-	FDungeonGenerator();
-	virtual ~FDungeonGenerator() override;
+	FDungeonDataGenerator();
+	FDungeonDataGenerator(IGeneratorMethod* InMethod)
+	{
+		Method = InMethod;
+	}
+	virtual ~FDungeonDataGenerator() override;
 
 	/** IDungeonBuilder implementation */
 	virtual void BuildDungeon(const int32 RoomsCount) override;
@@ -38,10 +39,12 @@ public:
 	}
 
 private:
-	FDungeonInfo OutDungeonInfo;
+	FDungeonInfo OutDungeonInfo{};
+
+	IGeneratorMethod* Method = nullptr;
 };
 
-// Custom Implementation
+// - Future Reimplementation --------------------
 class FRuntimeDungeonGenerator : public IDungeonBuilder
 {
 public:
@@ -62,7 +65,7 @@ private:
 
 
 /**
-* 
+* Main Module of this DungeonGenerator Plugin.
 */
 class FDungeonGeneratorModule : public IModuleInterface, public FSelfRegisteringExec
 {
@@ -83,6 +86,12 @@ public:
 	TSharedRef<class SDockTab> SpawnNomadTab(const FSpawnTabArgs& TabSpawnArgs);
 
 
+	FORCEINLINE TWeakPtr<FDungeonUtilities> GetDungeonUtilities() const
+	{
+		return DungeonUtils;
+	};
+
+
 private:	
 	const FName DungeonGeneratorTabName = TEXT("Dungeon Generator");
 	
@@ -96,7 +105,7 @@ private:
 public:
 	// Here are some Functions used by the Plugin's Toolbar to manage your Dungeon and Room customization.
 	// * DG stands for Dungeon Generator, in order to mark specific Features as Commands.
-	// ** Commands related to "Preview" give an in World representation (on Editor in this case) of our Dungeon or Room
+	// ** Commands related to "Preview" give an on World representation (on Editor World in this case) of our Dungeon or Room
 
 	void DGCommandGenerateDungeonData();
 	void DGCommandPreview();

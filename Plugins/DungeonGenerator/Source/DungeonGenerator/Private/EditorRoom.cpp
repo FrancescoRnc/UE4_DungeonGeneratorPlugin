@@ -8,8 +8,7 @@
 // Sets default values
 AEditorRoom::AEditorRoom()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root Component"));
 	FloorMeshComponent = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Floor Mesh"));
@@ -89,4 +88,12 @@ void AEditorRoom::OverwritePresetData(URoomPreset* InPreset) const
 	InPreset->WallsMesh = WallsMeshComponent->GetStaticMesh();
 	InPreset->DoorsMesh = DoorsMeshComponent->GetStaticMesh();
 	InPreset->RoomName = RoomName;
+}
+
+void AEditorRoom::ResetPreviewStatus(const URoomPreset* InPreset)
+{
+	FloorMeshComponent->SetStaticMesh(InPreset->FloorMesh);
+	WallsMeshComponent->SetStaticMesh(InPreset->WallsMesh);
+	DoorsMeshComponent->SetStaticMesh(InPreset->DoorsMesh);
+	RoomName = InPreset->RoomName;
 }

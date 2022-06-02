@@ -10,6 +10,8 @@ My first idea was to build Procedural Dungeons with this Isometric style for my 
 
 Extending this Plugin with new Features and implementations is part of the plan, so stay tuned for new updates :)
 
+You can see a presentation of this Plugin [Here](https://www.youtube.com/watch?v=wNMCmo1bRe0)
+
 `Here's a Preview of this Plugin's GUI:`  
 
 ![I](./Docs/Plugin%20GUI%20Overview.PNG)
@@ -48,7 +50,7 @@ Here you can look at some tracked information like:
 
 
 # How it works?
-First, create your RoomPreset Asset by the `Asset Menu`
+First, create your RoomPreset Assets by the `Asset Menu`
 
 ![I](./Docs/RoomPreset%20Assets%20on%20Content%20Browser.PNG)  
 and fill them with data.  

@@ -25,13 +25,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorFDungeonGridMakerTOneRoom, "Generator
 // 
 
 // Dungeon Generation Commands:
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorNoValidRoomsCount, "Generator.Commands.Dungeon.Generate.RoomsCountZeroNoValid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorOneRoomInput, "Generator.Commands.Dungeon.Generate.RoomsCountOneInputTwoRooms", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorTwoDoorsLinkedCorrectly, "Generator.Commands.Generate.Door.TwoDoorrs.CorrectLinking.TwoRooms", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorMoreRoomsFirstTwoDoorsLinkedCorrectly, "Generator.Commands.Generate.Door.TwoDoorrs.CorrectLinking.MoreRooms", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorResetDungeonData, "Generator.Commands.Reset.Dungeon.WholeFileIsEmpty", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorSaveDungeonEmptyNoValid, "Generator.Commands.Save.Dungeon.EmptyInfoNoValid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorSaveDungeonValid, "Generator.Commands.Save.Dungeon.Valid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorCommandsDungeonNoValidRoomsCount, "Generator.Commands.Dungeon.Generate.RoomsCountZeroNoValid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorCommandsDungeonOneRoomInput, "Generator.Commands.Dungeon.Generate.RoomsCountOneInputTwoRooms", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorCommandsDungeonResetDungeonData, "Generator.Commands.Dungeon.Reset.WholeFileIsEmpty", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorCommandsDungeonSaveDungeonEmptyNoValid, "Generator.Commands.Dungeon.Save.EmptyInfoNoValid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorCommandsDungeonSaveDungeonValid, "Generator.Commands.Dungeon.Save.Valid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorCommandsDoorsTwoDoorsLinkedCorrectly, "Generator.Commands.Door.Generate.TwoDoorrs.CorrectLinking.TwoRooms", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorCommandsDoorsMoreRoomsFirstTwoDoorsLinkedCorrectly, "Generator.Commands.Door.Generate.TwoDoorrs.CorrectLinking.MoreRooms", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
 
 class FMockGeneratorMethod : public IGeneratorMethod
@@ -323,9 +323,10 @@ bool FGeneratorFDungeonGridMakerTOneRoom::RunTest(const FString& Parameters)
 
 
 // Commands:
-bool FGeneratorNoValidRoomsCount::RunTest(const FString& Parameters)
+bool FGeneratorCommandsDungeonNoValidRoomsCount::RunTest(const FString& Parameters)
 {
-	FDungeonGenerator Generator;
+	TSharedPtr<FMockGeneratorMethod> Method = MakeShared<FMockGeneratorMethod>();
+	FDungeonDataGenerator Generator(Method.Get());
 
 	Generator.BuildDungeon(0);
 	FDungeonInfo Info = Generator.GetDungeonInfo();
@@ -336,69 +337,27 @@ bool FGeneratorNoValidRoomsCount::RunTest(const FString& Parameters)
 	return true;
 }
 
-bool FGeneratorOneRoomInput::RunTest(const FString& Parameters)
+bool FGeneratorCommandsDungeonOneRoomInput::RunTest(const FString& Parameters)
 {
-	FDungeonGenerator Generator;
+	TSharedPtr<FMockGeneratorMethod> Method = MakeShared<FMockGeneratorMethod>();
+	FDungeonDataGenerator Generator(Method.Get());
 
 	Generator.BuildDungeon(1);
 	Generator.BuildRooms();
 	Generator.BuildDoors();
 	FDungeonInfo Info = Generator.GetDungeonInfo();
 
+	TestEqual(TEXT("Grid Generation is Valid"), Info.State, EDungeonInfoState::VALID);
 	TestEqual(TEXT("This Grid with Rooms Count value == 1 should return a Grid with Size 1x2"), Info.GridSize, { 1,2,0 });
 	TestEqual(TEXT("Every Grid with a Rooms Count greater than 0 will have an Extra Room (A Starting Room)"), Info.RoomsInfo.Num(), 2);	
 
 	return true;
 }
 
-bool FGeneratorTwoDoorsLinkedCorrectly::RunTest(const FString& Parameters)
+bool FGeneratorCommandsDungeonResetDungeonData::RunTest(const FString& Parameters)
 {
-	FDungeonGenerator Generator;
-
-	Generator.BuildDungeon(1);
-	Generator.BuildRooms();
-	Generator.BuildDoors();
-	FDungeonInfo Info = Generator.GetDungeonInfo();
-
-	FDoorInfo FirstRoomDoor = Info.RoomsInfo[0].DoorsInfo[0];
-	FDoorInfo SecondRoomDoor = Info.RoomsInfo[1].DoorsInfo[0];
-
-	TestEqual(TEXT("First Door of first Room must always point to North Direction"), FirstRoomDoor.Direction, EWorldDirection::NORTH);
-	TestEqual(TEXT("First Door of first Room has its room as Source"), FirstRoomDoor.SourceRoomIndex, 0);
-	TestEqual(TEXT("First Door of first Room must point to second Room"), FirstRoomDoor.NextRoomIndex, 1);
-	TestEqual(TEXT("First Door of second Room must always point to South Direction"), SecondRoomDoor.Direction, EWorldDirection::SOUTH);
-	TestEqual(TEXT("First Door of second Room has its room as Source"), SecondRoomDoor.SourceRoomIndex, 1);
-	TestEqual(TEXT("First Door of second Room must point to South Direction"), SecondRoomDoor.NextRoomIndex, 0);		
-
-	return true;
-}
-
-bool FGeneratorMoreRoomsFirstTwoDoorsLinkedCorrectly::RunTest(const FString& Parameters)
-{
-	FDungeonGenerator Generator;
-
-	Generator.BuildDungeon(2);
-	Generator.BuildRooms();
-	Generator.BuildDoors();
-	FDungeonInfo Info = Generator.GetDungeonInfo();
-
-	FDoorInfo FirstRoomDoor = Info.RoomsInfo[0].DoorsInfo[0];
-	FDoorInfo SecondRoomDoor = Info.RoomsInfo[1].DoorsInfo[0];
-
-	TestEqual(TEXT("First Door of first Room must always point to North Direction"), FirstRoomDoor.Direction, EWorldDirection::NORTH);
-	TestEqual(TEXT("First Door of first Room has its room as Source"), FirstRoomDoor.SourceRoomIndex, 0);
-	TestEqual(TEXT("First Door of first Room must point to second Room"), FirstRoomDoor.NextRoomIndex, 1);
-	TestEqual(TEXT("First Door of second Room must always point to South Direction"), SecondRoomDoor.Direction, EWorldDirection::SOUTH);
-	TestEqual(TEXT("First Door of second Room has its room as Source"), SecondRoomDoor.SourceRoomIndex, 1);
-	TestEqual(TEXT("First Door of second Room must point to South Direction"), SecondRoomDoor.NextRoomIndex, 0);
-
-	return true;
-}
-
-
-bool FGeneratorResetDungeonData::RunTest(const FString& Parameters)
-{
-	FDungeonGenerator Generator;
+	TSharedPtr<FMockGeneratorMethod> Method = MakeShared<FMockGeneratorMethod>();
+	FDungeonDataGenerator Generator(Method.Get());
 
 	Generator.BuildDungeon(1);
 	Generator.BuildRooms();
@@ -414,10 +373,10 @@ bool FGeneratorResetDungeonData::RunTest(const FString& Parameters)
 	return true;
 }
 
-
-bool FGeneratorSaveDungeonEmptyNoValid::RunTest(const FString& Parameters)
+bool FGeneratorCommandsDungeonSaveDungeonEmptyNoValid::RunTest(const FString& Parameters)
 {
-	FDungeonGenerator Generator;
+	TSharedPtr<FMockGeneratorMethod> Method = MakeShared<FMockGeneratorMethod>();
+	FDungeonDataGenerator Generator(Method.Get());
 
 	Generator.BuildDungeon(0);
 	Generator.BuildRooms();
@@ -427,13 +386,14 @@ bool FGeneratorSaveDungeonEmptyNoValid::RunTest(const FString& Parameters)
 	UDungeonData* TmpDungeonData = FDungeonUtilities::Get()->SaveDungeonData(Info);
 
 	TestNull(TEXT("Save Command should return Null Object with no valid DungeonInfo"), TmpDungeonData);
-
+	
 	return true;
 }
 
-bool FGeneratorSaveDungeonValid::RunTest(const FString& Parameters)
+bool FGeneratorCommandsDungeonSaveDungeonValid::RunTest(const FString& Parameters)
 {
-	FDungeonGenerator Generator;
+	TSharedPtr<FMockGeneratorMethod> Method = MakeShared<FMockGeneratorMethod>();
+	FDungeonDataGenerator Generator(Method.Get());
 
 	Generator.BuildDungeon(1);
 	Generator.BuildRooms();
@@ -442,7 +402,53 @@ bool FGeneratorSaveDungeonValid::RunTest(const FString& Parameters)
 
 	UDungeonData* TmpDungeonData = FDungeonUtilities::Get()->SaveDungeonData(Info);
 
-	TestNotNull(TEXT("Save Command should work with valid DungeonInfo"), TmpDungeonData);
+	TestNotNull(TEXT("Save Command must work with valid DungeonInfo"), TmpDungeonData);
+
+	return true;
+}
+
+bool FGeneratorCommandsDoorsTwoDoorsLinkedCorrectly::RunTest(const FString& Parameters)
+{
+	TSharedPtr<FMockGeneratorMethod> Method = MakeShared<FMockGeneratorMethod>();
+	FDungeonDataGenerator Generator(Method.Get());
+
+	Generator.BuildDungeon(1);
+	Generator.BuildRooms();
+	Generator.BuildDoors();
+	FDungeonInfo Info = Generator.GetDungeonInfo();
+
+	FDoorInfo FirstRoomDoor = Info.RoomsInfo[0].DoorsInfo[0];
+	FDoorInfo SecondRoomDoor = Info.RoomsInfo[1].DoorsInfo[0];
+
+	TestEqual(TEXT("First Door of first Room must point to North Direction"), FirstRoomDoor.Direction, EWorldDirection::NORTH);
+	TestEqual(TEXT("First Door of first Room has its room as Source"), FirstRoomDoor.SourceRoomIndex, 0);
+	TestEqual(TEXT("First Door of first Room must point to second Room"), FirstRoomDoor.NextRoomIndex, 1);
+	TestEqual(TEXT("First Door of second Room must point to South Direction"), SecondRoomDoor.Direction, EWorldDirection::SOUTH);
+	TestEqual(TEXT("First Door of second Room has its room as Source"), SecondRoomDoor.SourceRoomIndex, 1);
+	TestEqual(TEXT("First Door of second Room must point to South Direction"), SecondRoomDoor.NextRoomIndex, 0);
+
+	return true;
+}
+
+bool FGeneratorCommandsDoorsMoreRoomsFirstTwoDoorsLinkedCorrectly::RunTest(const FString& Parameters)
+{
+	TSharedPtr<FMockGeneratorMethod> Method = MakeShared<FMockGeneratorMethod>();
+	FDungeonDataGenerator Generator(Method.Get());
+
+	Generator.BuildDungeon(2);
+	Generator.BuildRooms();
+	Generator.BuildDoors();
+	FDungeonInfo Info = Generator.GetDungeonInfo();
+
+	FDoorInfo FirstRoomDoor = Info.RoomsInfo[0].DoorsInfo[0];
+	FDoorInfo SecondRoomDoor = Info.RoomsInfo[1].DoorsInfo[0];
+
+	TestEqual(TEXT("First Door of first Room must always point to North Direction"), FirstRoomDoor.Direction, EWorldDirection::NORTH);
+	TestEqual(TEXT("First Door of first Room has its room as Source"), FirstRoomDoor.SourceRoomIndex, 0);
+	TestEqual(TEXT("First Door of first Room must point to second Room"), FirstRoomDoor.NextRoomIndex, 1);
+	TestEqual(TEXT("First Door of second Room must always point to South Direction"), SecondRoomDoor.Direction, EWorldDirection::SOUTH);
+	TestEqual(TEXT("First Door of second Room has its room as Source"), SecondRoomDoor.SourceRoomIndex, 1);
+	TestEqual(TEXT("First Door of second Room must point to South Direction"), SecondRoomDoor.NextRoomIndex, 0);
 
 	return true;
 }

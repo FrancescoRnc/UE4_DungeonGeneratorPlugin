@@ -14,7 +14,7 @@ static EAssetTypeCategories::Type DungeonAssetTypeCategory;
 
 
 /**
-* 
+* Struct used to store data for a Room in a generated Dungeon
 */
 struct FRoomInfo
 {
@@ -29,7 +29,7 @@ struct FRoomInfo
 
 
 /**
- * 
+ * UObject Asset to be used for custom Editing of Rooms, to be used for the Dungeon generation
  */
 UCLASS()
 class DUNGEONGENERATOR_API URoomPreset : public UObject
@@ -54,10 +54,6 @@ class DUNGEONGENERATOR_API URoomPreset : public UObject
 
 	UPROPERTY(EditAnywhere)
 	UStaticMesh* DoorsMesh = nullptr;
-
-	UFUNCTION(BlueprintCallable)
-	void DoThings();
-
 };
 
 
@@ -72,7 +68,7 @@ class DUNGEONGENERATOR_API FRoomPresetAssetTypeAction : public FAssetTypeActions
 
 	FORCEINLINE uint32 GetCategories() override
 	{
-		return EAssetTypeCategories::Blueprint;
+		return AssetTypeCategory;
 	}
 
 	FORCEINLINE FText GetName() const override
@@ -90,9 +86,9 @@ class DUNGEONGENERATOR_API FRoomPresetAssetTypeAction : public FAssetTypeActions
 		return FColor::Red;
 	}
 
-//private:
+	private:
 
-	//static EAssetTypeCategories::Type AssetTypeCategory;
+	EAssetTypeCategories::Type AssetTypeCategory = EAssetTypeCategories::None;
 };
 
 
@@ -114,18 +110,4 @@ class DUNGEONGENERATOR_API URoomPresetFactory : public UFactory
 		UObject* Context,
 		FFeedbackContext* Warn
 	);
-
-	FORCEINLINE FText GetDisplayName() const override
-	{
-		return FText::FromString(TEXT("Room Preset"));
-	};
-
-	FORCEINLINE uint32 GetMenuCategories() const override
-	{
-		return EAssetTypeCategories::Blueprint;
-	};
-
-	private:
-
-	EAssetTypeCategories::Type AssetTypeCategory = EAssetTypeCategories::None;
 };

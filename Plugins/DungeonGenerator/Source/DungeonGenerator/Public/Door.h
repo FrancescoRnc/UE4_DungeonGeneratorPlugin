@@ -32,7 +32,7 @@ struct FDoorInfo
 	EWorldDirection Direction;
 };
 
-
+// - Future Reimplementation --------------------
 UCLASS()
 class DUNGEONGENERATOR_API ADoor : public AActor
 {

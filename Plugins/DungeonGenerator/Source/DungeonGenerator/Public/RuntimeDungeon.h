@@ -8,6 +8,7 @@
 #include "DungeonUtilities.h"
 #include "RuntimeDungeon.generated.h"
 
+// - Future Reimplementation --------------------
 UCLASS()
 class DUNGEONGENERATOR_API ARuntimeDungeon : public AActor, public IDungeonBuilder
 {
@@ -21,11 +22,7 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
-	//virtual void Tick(float DeltaTime) override;
-
-	
+public:
 	virtual void BuildDungeon(const int32 RoomsCount) override;
 	virtual void BuildRooms() override;
 	virtual void BuildDoors() override;

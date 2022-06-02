@@ -16,7 +16,7 @@ const int32 IGeneratorMethod::GetPatternFromIndex(const int32 Index)
 }
 
 
-FGrid FStandardGeneratorMethod::Generate(const FGrid EmptyGridSample, FGridMakerInfo& MakerInfo)
+FGrid FDefaultGeneratorMethod::Generate(const FGrid EmptyGridSample, FGridMakerInfo& MakerInfo)
 {
 	FGrid NewGrid = EmptyGridSample;
 	TArray<FIntVector> PathTrack;

@@ -17,7 +17,11 @@ class DUNGEONGENERATOR_API IGeneratorMethod
 	const static int32 GetPatternFromIndex(const int32 Index);
 };
 
-class DUNGEONGENERATOR_API FStandardGeneratorMethod : public IGeneratorMethod
+/**
+* This is the Default Method given by this Plugin.
+* This generates a Dungeon with Rooms = (RoomsCount + 1), where the extra Room is the Starting Room.
+*/
+class DUNGEONGENERATOR_API FDefaultGeneratorMethod : public IGeneratorMethod
 {
 	public:
 	virtual FGrid Generate(const FGrid EmptyGridSample, FGridMakerInfo& MakerInfo) override;

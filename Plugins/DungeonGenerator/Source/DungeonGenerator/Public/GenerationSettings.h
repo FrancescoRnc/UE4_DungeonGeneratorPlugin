@@ -15,7 +15,7 @@
 
 DECLARE_LOG_CATEGORY_EXTERN(LogGenSettings, All, All);
 
-using URoomPresetPtr = URoomPreset*; //TSoftObjectPtr<URoomPreset>;
+using URoomPresetPtr = URoomPreset*;
 
 
 /**
@@ -45,19 +45,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere)
 	TArray<FString> RoomPresetsPaths{};
-
-
-	/*UFUNCTION()
-	void SetDungeonDataFolderPath(const FName Path);
-
-	UFUNCTION()
-	void SetPresetFolderPath(const FName Path);
-
-	UFUNCTION()
-	FName GetDungeonDataFolderPath() const;
-
-	UFUNCTION()
-	FName GetPresetFolderPath() const;*/
 
 	UPROPERTY(VisibleAnywhere)
 	UDungeonData* DungeonDataRef = nullptr;

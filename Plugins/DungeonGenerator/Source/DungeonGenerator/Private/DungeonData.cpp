@@ -20,12 +20,42 @@ void UDungeonData::Reset()
 	GridScheme.Empty();
 		
 	RoomsPresetID.Empty();
+	RoomsPresetPaths.Empty();
 	RoomsCoordinate.Empty();
 	RoomsGridIndex.Empty();
 		
 	DoorsSourceRoomIndex.Empty();
 	DoorsNextRoomIndex.Empty();
 	DoorsDirection.Empty();
+}
+
+void UDungeonData::SaveData(const FDungeonInfo& Info)
+{
+	GridSize = Info.GridSize;
+	PathLength = Info.RoomsInfo.Num();
+	GridScheme = Info.GridScheme;
+	RoomsPresetID.Init(-1, PathLength);
+	RoomsPresetPaths.Init(TEXT(""), PathLength);
+	RoomsCoordinate.Init({ 0,0,0 }, PathLength);
+	RoomsGridIndex.Init(-1, PathLength);
+
+	for (int32 Index = 0; Index < PathLength; Index++)
+	{
+		const FRoomInfo RoomInfo = Info.RoomsInfo[Index];
+		RoomsPresetID[Index] = RoomInfo.PresetID;
+		RoomsPresetPaths[Index] = RoomInfo.PresetPath;
+		RoomsCoordinate[Index] = RoomInfo.CoordinateInGrid;
+		RoomsGridIndex[Index] = RoomInfo.IndexInGrid;
+		const int32 RoomsCount = RoomInfo.DoorsInfo.Num();
+		for (int32 DoorIndex = 0; DoorIndex < RoomsCount; DoorIndex++)
+		{
+			const int32 IntDirection = static_cast<int32>
+				(RoomInfo.DoorsInfo[DoorIndex].Direction);
+			DoorsDirection.Add(IntDirection);
+			DoorsSourceRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].SourceRoomIndex);
+			DoorsNextRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].NextRoomIndex);
+		}
+	}
 }
 
 void UDungeonData::Serialize(FArchive& Ar)

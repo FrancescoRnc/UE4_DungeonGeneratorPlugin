@@ -10,7 +10,7 @@
 
 
 /**
-* Actor used for in World representation and Editing purpose of a Room, by using a URoomPreset Object.
+* Actor used for in World representation and Editing purpose of a Room, by using a URoomPreset Object and an FRoomInfo Oject.
 */
 UCLASS()
 class DUNGEONGENERATOR_API AEditorRoom : public AActor
@@ -24,13 +24,13 @@ public:
 	UPROPERTY(BlueprintReadWrite, EditAnywhere,   Category="Dungeon Room Editing")
 	FName RoomName;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Dungeon Room Editing")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UStaticMeshComponent* FloorMeshComponent;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Dungeon Room Editing")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UStaticMeshComponent* WallsMeshComponent;
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Dungeon Room Editing")
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 	UInstancedStaticMeshComponent* DoorsMeshComponent;
 
 
@@ -44,4 +44,6 @@ public:
 	void Preview(const FRoomInfo& Info);
 
 	void OverwritePresetData(URoomPreset* InPreset) const;
+
+	void ResetPreviewStatus(const URoomPreset* InPreset);
 };

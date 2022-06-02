@@ -9,11 +9,6 @@ URoomPreset::URoomPreset()
 	
 }
 
-void URoomPreset::DoThings()
-{
-	UE_LOG(LogTemp, Warning, TEXT("I am Doing Things"))
-}
-
 
 // Room Preset Factory
 URoomPresetFactory::URoomPresetFactory()
@@ -39,6 +34,8 @@ UObject* URoomPresetFactory::FactoryCreateNew
 	return NewPreset;
 }
 
+
+// Room Preset Asset Type Action
 FRoomPresetAssetTypeAction::FRoomPresetAssetTypeAction()
 {
 
@@ -46,5 +43,5 @@ FRoomPresetAssetTypeAction::FRoomPresetAssetTypeAction()
 
 FRoomPresetAssetTypeAction::FRoomPresetAssetTypeAction(EAssetTypeCategories::Type Type)
 {
-	//AssetTypeCategory = Type;
+	AssetTypeCategory = Type;
 }

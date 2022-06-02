@@ -32,15 +32,17 @@ struct FDungeonInfo
 
 
 /**
- * Object File used for In-Level generation of a new Dungeon
- * - GridSize: The full 2D size (Z is not used) of the stored Grid;
- * - PathLength: The length of the Path expressed by the Rooms count;
+ * Object File used to build your Dungeon on World after generation:
  * - GridScheme: A 1D representation of our Grid, in which any non-zero number stands for its Cell Pattern;
- * - RoomsPresetID: An Array of Indices held to track the corresponding path of the Paths' Array;
- * - RoomsCoordinate: ;
- * - DoorsSourceRoomIndex: ;
- * - DoorsNextRoomIndex: ;
- * - DoorsDirection: ;
+ * - PathLength: The length of the Path expressed by the Rooms count;
+ * - GridSize: The full 2D size (Z is not used) of the stored Grid;
+ * - RoomsPresetID: An Array that tracks the ID of all Presets used for the Dungeon;
+ * - RoomsPresetPaths: An Array that tracks the File Path of all Presets used for the Dungeon;
+ * - RoomsCoordinate: An Array that tracks Coordinates of all Rooms;
+ * - RoomsGridIndex: An Array that tracks the Grid Index if all Rooms;
+ * - DoorsSourceRoomIndex: An Array that tracks the Path Index of the Source Room of any specific Door;
+ * - DoorsNextRoomIndex: An Array that tracks the Path Index of the Next Room of any specific Door;
+ * - DoorsDirection: An Array that tracks the Direction of any specific Door;
  */
 UCLASS()
 class DUNGEONGENERATOR_API UDungeonData : public UObject
@@ -87,6 +89,8 @@ class DUNGEONGENERATOR_API UDungeonData : public UObject
 	
 	UFUNCTION(BlueprintCallable)
 	void Reset();
+
+	void SaveData(const FDungeonInfo& Info);
 
 	void Serialize(FArchive& Ar) override;
 };

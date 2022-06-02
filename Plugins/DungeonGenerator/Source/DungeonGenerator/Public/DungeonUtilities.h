@@ -12,6 +12,9 @@ DECLARE_LOG_CATEGORY_EXTERN(LogDunGenUtilities, All, All);
 
 using URoomPresetPtr = class URoomPreset*;
 
+/**
+* Enumeration that tells the Status of a Command.
+*/
 enum class ECommandStatusType : uint8
 {
 	ERROR		= 0,
@@ -20,7 +23,10 @@ enum class ECommandStatusType : uint8
 	MAX			= 3
 };
 
-enum class EFileResultStatus : uint8
+/**
+* Enumeration that tells which type of Command has been used.
+*/
+enum class EFileCommandType : uint8
 {
 	NONE		= 0,
 	CREATED		= 1,
@@ -31,10 +37,14 @@ enum class EFileResultStatus : uint8
 	MAX			= 6
 };
 
+/**
+* This Struct is used to know which type of Command has been used, and if a Command has been succesfully resolved.
+* Use is recommended for File Managing operations.
+*/
 struct FFileReport
 {
 	ECommandStatusType CommandStatus	= ECommandStatusType::ERROR;
-	EFileResultStatus ResultStatus		= EFileResultStatus::NONE;
+	EFileCommandType ResultStatus		= EFileCommandType::NONE;
 };
 
 
@@ -48,7 +58,7 @@ public:
 
 	/**
 	* This step builds the fundamentals of the Target Dungeon.
-	* @param RoomsCount: The amount of rooms you want to have for your Dungeon
+	* @param RoomsCount: The amount of Rooms you want for your Dungeon;
 	*/
 	virtual void BuildDungeon(const int32 RoomsCount) = 0;
 
@@ -105,8 +115,7 @@ public:
 
 	FORCEINLINE void SetDungeonDataPath(const FString& InPath) const
 	{
-		const FString DataFolderPath = InPath;
-		CurrentSettings->DungeonDataFilePath = DataFolderPath + TEXT("DungeonData.bin");
+		CurrentSettings->DungeonDataFilePath = InPath + TEXT("DungeonData.bin");
 	}
 
 	FORCEINLINE void SetDungeonRoomsCount(const int32 InCount) const
@@ -214,7 +223,7 @@ public:
 			Report = FFileReport
 			{
 				ECommandStatusType::VALID,
-				EFileResultStatus::LOADED
+				EFileCommandType::LOADED
 			};
 		}
 
@@ -234,7 +243,7 @@ public:
 			Report = FFileReport
 			{
 				ECommandStatusType::VALID,
-				EFileResultStatus::SAVED
+				EFileCommandType::SAVED
 			};
 		}
 

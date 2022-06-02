@@ -29,7 +29,7 @@ public:
 	* @param sizeY The height of the Dungeon;
 	*/
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
-	void BuildDungeon();
+	void BuildDungeon(const int32 RoomsCount);
 
 	/**
 	* This step builds all the Rooms to form, your Dungeon.

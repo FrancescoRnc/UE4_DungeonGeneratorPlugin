@@ -144,39 +144,10 @@ UDungeonData* FDungeonUtilities::SaveDungeonData(const FDungeonInfo& Info)
 	}
 
 	CurrentSettings->DungeonDataRef->Reset();
-	UDungeonData* Data = CurrentSettings->DungeonDataRef;
-
-	// Generate Data
-	Data->GridSize = Info.GridSize;
-	Data->PathLength = Info.RoomsInfo.Num();
-	Data->GridScheme = Info.GridScheme;
-	Data->RoomsPresetID.Init(-1, Data->PathLength);
-	Data->RoomsPresetPaths.Init(TEXT(""), Data->PathLength);
-	Data->RoomsCoordinate.Init({ 0,0,0 }, Data->PathLength);
-	Data->RoomsGridIndex.Init(-1, Data->PathLength);
-	for (int32 Index = 0; Index < Data->PathLength; Index++)
-	{
-		const FRoomInfo RoomInfo = Info.RoomsInfo[Index];
-		Data->RoomsPresetID[Index] = RoomInfo.PresetID;
-		Data->RoomsPresetPaths[Index] = RoomInfo.PresetPath;
-		Data->RoomsCoordinate[Index] = RoomInfo.CoordinateInGrid;
-		Data->RoomsGridIndex[Index] = RoomInfo.IndexInGrid;
-		const int32 RoomsCount = RoomInfo.DoorsInfo.Num();
-		for (int32 DoorIndex = 0; DoorIndex < RoomsCount; DoorIndex++)
-		{
-			const int32 IntDirection = static_cast<int32>
-				(RoomInfo.DoorsInfo[DoorIndex].Direction);
-			Data->DoorsDirection.Add(IntDirection);
-			Data->DoorsSourceRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].SourceRoomIndex);
-			Data->DoorsNextRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].NextRoomIndex);
-		}
-	}
-	// ----------------
-
-	CurrentSettings->DungeonDataRef = Data;
+	CurrentSettings->DungeonDataRef->SaveData(Info);
 
 	SaveSerializedObject(CurrentSettings->DungeonDataRef, CurrentSettings->DungeonDataFilePath);
 
-	return Data;
+	return CurrentSettings->DungeonDataRef;
 }
 

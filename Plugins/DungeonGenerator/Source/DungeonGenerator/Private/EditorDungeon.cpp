@@ -7,8 +7,7 @@
 // Sets default values
 AEditorDungeon::AEditorDungeon()
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	RootComponent = CreateDefaultSubobject
 		<USceneComponent>(TEXT("Root Component"));
@@ -17,21 +16,6 @@ AEditorDungeon::AEditorDungeon()
 
 	DoorInstancesComponent->SetupAttachment(RootComponent);
 }
-
-// Called when the game starts or when spawned
-//void AEditorDungeon::BeginPlay()
-//{
-//	Super::BeginPlay();
-//
-//}
-
-// Called every frame
-//void AEditorDuneon::Tick(float DeltaTime)
-//{
-//	Super::Tick(DeltaTime);
-//
-//}
-
 
 void AEditorDungeon::Build()
 {
@@ -49,17 +33,14 @@ void AEditorDungeon::ClearInstances()
 	for (TPair<uint32, UInstancedStaticMeshComponent*> FIMC : FloorMeshInstances)
 	{
 		FIMC.Value->ClearInstances();
-		//UE_LOG(LogTemp, Warning, TEXT("Remaining Instances: %d"), FIMC.Value->GetInstanceCount());
 	}
 
 	for (TPair<uint32, UInstancedStaticMeshComponent*> WIMC : WallsMeshInstances)
 	{
 		WIMC.Value->ClearInstances();
-		//UE_LOG(LogTemp, Warning, TEXT("Remaining Instances: %d"), WIMC.Value->GetInstanceCount());
 	}
 
 	DoorInstancesComponent->ClearInstances();
-	//UE_LOG(LogTemp, Warning, TEXT("Remaining Instances: %d"), DoorInstancesComponent->GetInstanceCount());
 
 	UE_LOG(LogTemp, Warning, TEXT("Instances Clear Complete!"));
 }
@@ -152,9 +133,12 @@ void AEditorDungeon::BuildDoors()
 		}
 
 		UStaticMeshSocket* SelectedSocket = FloorMeshRef->FindSocket(DirectionName);
-		Transforms[Index].SetLocation(SelectedSocket->RelativeLocation + RoomLocation);
-		Transforms[Index].SetRotation(SelectedSocket->RelativeRotation.Quaternion());
-		DoorInstancesComponent->SetStaticMesh(Preset->DoorsMesh);
+		if (SelectedSocket)
+		{
+			Transforms[Index].SetLocation(SelectedSocket->RelativeLocation + RoomLocation);
+			Transforms[Index].SetRotation(SelectedSocket->RelativeRotation.Quaternion());
+			DoorInstancesComponent->SetStaticMesh(Preset->DoorsMesh);
+		}		
 	}
 
 	DoorInstancesComponent->AddInstances(Transforms, true);
@@ -180,7 +164,6 @@ void AEditorDungeon::AddNewRoomInstancedMeshComponents(const int32 PresetID)
 	AddInstanceComponent(NewFloorComponent);
 	FloorMeshInstances.Add(PresetID, NewFloorComponent);
 
-
 	const FString NewWallsComponentName = FString::Printf(TEXT("%s Walls"), *Preset->RoomName.ToString());
 	UInstancedStaticMeshComponent* NewWallsComponent =
 		NewObject<UInstancedStaticMeshComponent>(this, *NewWallsComponentName);
@@ -204,7 +187,6 @@ void AEditorDungeon::SpawnNewRoom(const int32 PresetID, const FVector Position)
 	{
 		AddNewRoomInstancedMeshComponents(PresetID);
 	}
-
 
 	const FTransform Transform(Position);
 	FloorMeshInstances[PresetID]->AddInstance(Transform);

@@ -30,18 +30,18 @@ DEFINE_LOG_CATEGORY(LogDunGenExecQueryFiles);
 DEFINE_LOG_CATEGORY(LogDunGenExecQueryInfo);
 
 
-// FDungeonGenerator
-FDungeonGenerator::FDungeonGenerator()
+// FDungeonDataGenerator
+FDungeonDataGenerator::FDungeonDataGenerator()
 {
 	
 }
 
-FDungeonGenerator::~FDungeonGenerator()
+FDungeonDataGenerator::~FDungeonDataGenerator()
 {
 	
 }
 
-void FDungeonGenerator::BuildDungeon(const int32 RoomsCount)
+void FDungeonDataGenerator::BuildDungeon(const int32 RoomsCount)
 {
 	OutDungeonInfo = {};
 	if (RoomsCount <= 0)
@@ -50,11 +50,11 @@ void FDungeonGenerator::BuildDungeon(const int32 RoomsCount)
 		return;
 	}
 
-	UE_LOG(LogDunGenBuild, LOGCOLOR, TEXT("Building Dungeon..."));
+	UE_LOG(LogDunGenBuild, Display, TEXT("Building Dungeon..."));
 
 	// Here you can set whichever of your custom GeneratorMethods for your custom Dungeon Generation
-	TSharedPtr<FStandardGeneratorMethod> Method = MakeShared<FStandardGeneratorMethod>();
-	FDungeonGridMaker DungeonGridMaker(RoomsCount, Method.Get());
+	//TSharedPtr<FDefaultGeneratorMethod> Method = MakeShared<FDefaultGeneratorMethod>();
+	FDungeonGridMaker DungeonGridMaker(RoomsCount, Method);
 
 	//FGrid Grid = DungeonGridMaker.GetGrid();
 	FGrid Grid = DungeonGridMaker.Make();
@@ -67,7 +67,7 @@ void FDungeonGenerator::BuildDungeon(const int32 RoomsCount)
 	OutDungeonInfo.GridScheme = Scheme;
 }
 
-void FDungeonGenerator::BuildRooms()
+void FDungeonDataGenerator::BuildRooms()
 {
 	if (OutDungeonInfo.State == EDungeonInfoState::NOVALID)
 	{
@@ -81,7 +81,7 @@ void FDungeonGenerator::BuildRooms()
 		return;
 	}
 
-	UE_LOG(LogDunGenBuild, LOGCOLOR, TEXT("Building Rooms..."));
+	UE_LOG(LogDunGenBuild, Display, TEXT("Building Rooms..."));
 
 	const int32 Length = OutDungeonInfo.Grid.PathLength;
 	OutDungeonInfo.RoomsInfo.Init({}, Length);	
@@ -114,17 +114,17 @@ void FDungeonGenerator::BuildRooms()
 		OutDungeonInfo.RoomsInfo[Index] = Room;
 	}
 	
-	UE_LOG(LogDunGenBuild, LOGCOLOR, TEXT("Rooms Built!"));
+	UE_LOG(LogDunGenBuild, Display, TEXT("Rooms Built!"));
 }
 
-void FDungeonGenerator::BuildDoors()
+void FDungeonDataGenerator::BuildDoors()
 {
 	if (OutDungeonInfo.State == EDungeonInfoState::NOVALID)
 	{
 		return;
 	}
 
-	UE_LOG(LogDunGenBuild, LOGCOLOR, TEXT("Building Doors..."));
+	UE_LOG(LogDunGenBuild, Display, TEXT("Building Doors..."));
 
 	TArray<FRoomInfo>& OutRoomsInfo = OutDungeonInfo.RoomsInfo;
 
@@ -158,7 +158,7 @@ void FDungeonGenerator::BuildDoors()
 	}
 	OutDungeonInfo.RoomsInfo = OutRoomsInfo;
 	
-	UE_LOG(LogDunGenBuild, LOGCOLOR, TEXT("Doors Built!"));
+	UE_LOG(LogDunGenBuild, Display, TEXT("Doors Built!"));
 }
 
 
@@ -225,7 +225,7 @@ void FDungeonGeneratorModule::StartupModule()
 
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 	DungeonAssetTypeCategory = AssetTools.RegisterAdvancedAssetCategory(FName(TEXT("Dungeon Elements")), LOCTEXT("DungeonElementsText", "Dungeon Elements"));
-	AssetTools.RegisterAssetTypeActions(MakeShareable(new FRoomPresetAssetTypeAction()));
+	AssetTools.RegisterAssetTypeActions(MakeShareable(new FRoomPresetAssetTypeAction(DungeonAssetTypeCategory)));
 
 	DungeonUtils->CreateGenerationSettings();
 
@@ -237,7 +237,7 @@ void FDungeonGeneratorModule::StartupModule()
     	if (const URoomPresetPtr Preset = Cast<URoomPreset>(Object))
     	{
 			DungeonUtils->DeletePresetReference(Preset);
-    		UE_LOG(LogDunGenStartup, LOGCOLOR, TEXT("In Memory Asset Deleted: %s"), *Object->GetName());
+    		UE_LOG(LogDunGenStartup, Display, TEXT("In Memory Asset Deleted: %s"), *Object->GetName());
     	}    	
     });
 
@@ -252,7 +252,7 @@ void FDungeonGeneratorModule::StartupModule()
 	// Uncomment only if tab is not on Editor, then re-comment as well as it is.
 	//TabManager->TryInvokeTab(DungeonGeneratorTabName);
 	
-	UE_LOG(LogDunGenStartup, LOGCOLOR, TEXT("Dungeon Generator Startup"));
+	UE_LOG(LogDunGenStartup, Display, TEXT("Dungeon Generator Startup"));
 }
 
 void FDungeonGeneratorModule::ShutdownModule()
@@ -260,7 +260,7 @@ void FDungeonGeneratorModule::ShutdownModule()
 	const TSharedPtr<FGlobalTabmanager> TabManager = FGlobalTabmanager::Get();
 	TabManager->UnregisterNomadTabSpawner(DungeonGeneratorTabName);
 	
-	UE_LOG(LogDunGenShutdown, LOGCOLOR, TEXT("Dungeon Generator Shutdown"));
+	UE_LOG(LogDunGenShutdown, Display, TEXT("Dungeon Generator Shutdown"));
 }
 
 bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDevice& Ar)
@@ -333,15 +333,14 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 						DirectionName = TEXT("NORTH");
 						break;
 					case EWorldDirection::EAST:
-                    	DirectionName = TEXT("EAST");
-                    	break;
-                    case EWorldDirection::SOUTH:
-                    	DirectionName = TEXT("SOUTH");
-                    	break;
+						DirectionName = TEXT("EAST");
+						break;
+					case EWorldDirection::SOUTH:
+						DirectionName = TEXT("SOUTH");
+						break;
 					case EWorldDirection::WEST:
 						DirectionName = TEXT("WEST");
 						break;
-					
 					default:
 						DirectionName = TEXT("NONE");
 						break;
@@ -372,7 +371,8 @@ void FDungeonGeneratorModule::DGCommandGenerateDungeonData()
 		return;
 	}
 	
-	FDungeonGenerator DungeonGenerator;
+	TSharedPtr<FDefaultGeneratorMethod> Method = MakeShared<FDefaultGeneratorMethod>();
+	FDungeonDataGenerator DungeonGenerator(Method.Get());
 	DungeonGenerator.BuildDungeon(RoomsCount);
 	DungeonGenerator.BuildRooms();
 	DungeonGenerator.BuildDoors();
@@ -380,7 +380,7 @@ void FDungeonGeneratorModule::DGCommandGenerateDungeonData()
 
 	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
 
-	UE_LOG(LogTemp, LOGCOLOR, TEXT("A NEW DUNGEON HAS BEEN GENERATED!"));
+	UE_LOG(LogTemp, Display, TEXT("A NEW DUNGEON HAS BEEN GENERATED!"));
 }
 
 void FDungeonGeneratorModule::DGCommandPreview()
@@ -394,7 +394,7 @@ void FDungeonGeneratorModule::DGCommandPreview()
 
 	EditorDungeon->Build();
 	
-	UE_LOG(LogTemp, LOGCOLOR, TEXT("HERE'S A PREVIEW OF THE MAP!"));
+	UE_LOG(LogTemp, Display, TEXT("HERE'S A PREVIEW OF THE MAP!"));
 }
 
 /* Future Reimplementation
@@ -404,7 +404,7 @@ void FDungeonGeneratorModule::DGCommandSave()
 
 	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
 
-	UE_LOG(LogTemp, LOGCOLOR, TEXT("CURRENT DUNGEON HAS BEEN SAVED!"));
+	UE_LOG(LogTemp, Display, TEXT("CURRENT DUNGEON HAS BEEN SAVED!"));
 }
 
 void FDungeonGeneratorModule::DGCommandReset()
@@ -414,7 +414,7 @@ void FDungeonGeneratorModule::DGCommandReset()
 	CurrentDungeonInfo.Reset();
 	CurrentDungeonData = DungeonUtils->SaveDungeonData(CurrentDungeonInfo);
 
-	UE_LOG(LogTemp, LOGCOLOR, TEXT("CURRENT DUNGEON RESET TO PREVIOUS STATE!"));
+	UE_LOG(LogTemp, Display, TEXT("CURRENT DUNGEON RESET TO PREVIOUS STATE!"));
 }
 */
 
@@ -425,7 +425,7 @@ void FDungeonGeneratorModule::DGCommandRoomPreview()
 	UWorld* World = GEditor->GetEditorWorldContext().World();
 	AEditorRoom* SelectedRoom = DungeonUtils->GetSelectedActor<AEditorRoom>(World, Selection);
 
-	const URoomPresetPtr SelectedPreset = FDungeonUtilities::Get()->GetSelectedPreset();
+	const URoomPresetPtr SelectedPreset = DungeonUtils->GetSelectedPreset();
 	if (SelectedPreset)
 	{
 		FRoomInfo Info;
@@ -436,7 +436,7 @@ void FDungeonGeneratorModule::DGCommandRoomPreview()
 
 		SelectedRoom->Preview(Info);
 		
-		UE_LOG(LogTemp, LOGCOLOR, TEXT("HERE'S A PREVIEW OF THE SELECTED ROOM!"));
+		UE_LOG(LogTemp, Display, TEXT("HERE'S A PREVIEW OF THE SELECTED ROOM!"));
 	}
 }
 
@@ -451,7 +451,7 @@ void FDungeonGeneratorModule::DGCommandRoomSaveChanges()
 	if (SelectedPreset)
 	{
 		SelectedRoom->OverwritePresetData(SelectedPreset);
-		UE_LOG(LogTemp, LOGCOLOR, TEXT("SELECTED ROOM SAVED!"));
+		UE_LOG(LogTemp, Display, TEXT("SELECTED ROOM SAVED!"));
 	}
 }
 
@@ -462,6 +462,12 @@ void FDungeonGeneratorModule::DGCommandRoomResetChanges()
 	UWorld* World = GEditor->GetEditorWorldContext().World();
 	AEditorRoom* SelectedRoom = DungeonUtils->GetSelectedActor<AEditorRoom>(World, Selection);
 
+	URoomPresetPtr SelectedPreset = DungeonUtils->GetSelectedPreset();
+	if (SelectedRoom)
+	{
+		SelectedRoom->ResetPreviewStatus(SelectedPreset);
+		UE_LOG(LogTemp, Display, TEXT("SELECTED ROOM RESET!"));
+	}
 	// Reset Implementation
 
 }
@@ -478,7 +484,7 @@ void FDungeonGeneratorModule::RegisterRoomPresetAssetPath(FMenuBuilder& MenuBuil
 			const URoomPresetPtr Preset = Cast<URoomPreset>(Asset.GetAsset());
 			if (Preset)
 			{
-				FDungeonUtilities::Get()->AddPresetReference(Preset);
+				DungeonUtils->AddPresetReference(Preset);
 				UE_LOG(LogTemp, Error, TEXT("RegisterRoomPresetAssetPath Command!!!"));
 			}
 		}
@@ -491,7 +497,7 @@ void FDungeonGeneratorModule::RegisterRoomPresetAssetPath(FMenuBuilder& MenuBuil
 			const URoomPresetPtr Preset = Cast<URoomPreset>(Asset.GetAsset());
 			if (Preset)
 			{
-				FDungeonUtilities::Get()->DeletePresetReference(Preset);
+				DungeonUtils->DeletePresetReference(Preset);
 				UE_LOG(LogTemp, Error, TEXT("UnegisterRoomPresetAssetPath Command!!!"));
 			}
 		}
