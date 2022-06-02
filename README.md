@@ -90,6 +90,4 @@ This Plugin offers two query Prompt Commands:
 
 * `"querypresets"` Command: This shows all registered RoomPreset Assets with their relative path;
 
-![I](./Docs/Plugin%20Prompt%20querypresets%20Command.PNG)  
-
-
+![I](./Docs/Plugin%20Prompt%20querypresets%20Command.PNG)
