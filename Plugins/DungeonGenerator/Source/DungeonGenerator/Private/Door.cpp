@@ -2,7 +2,6 @@
 
 
 #include "Door.h"
-#include "DungeonRoom.h"
 #include "GameFramework/Character.h"
 
 // Sets default values
@@ -10,26 +9,5 @@ ADoor::ADoor()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-
-	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root Component"));
-	DoorMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Door Mesh"));
-	InteractionCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("Interaction Collider"));
-
-	DoorMesh->SetupAttachment(RootComponent);
-	InteractionCollider->SetupAttachment(RootComponent);
 }
 
-// Called when the game starts or when spawned
-void ADoor::BeginPlay()
-{
-	Super::BeginPlay();
-	
-}
-
-
-void ADoor::Teleport(ACharacter* Character)
-{
-	const EWorldDirection OppositeDirection = EWorldDirection::SOUTH;
-	const FVector NewLocation = LinkedRoom->GetCardinalLocation(OppositeDirection);
-	Character->SetActorLocation(NewLocation);
-}

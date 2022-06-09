@@ -21,6 +21,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorFGridMakerInfoRoomsCountOne, "Generat
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorFDungeonGridMakerEmpty, "Generator.Classes.FDungeonGridMaker.Empty", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorFDungeonGridMakerGeneratorMethod, "Generator.Classes.FDungeonGridMaker.GeneratorMethod", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorFDungeonGridMakerTOneRoom, "Generator.Classes.FDungeonGridMaker.OneRoom", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FGeneratorUDungeonDataExtractInfo, "Generator.Classes.UDungeonData.ExtractInfo", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ProductFilter)
 
 // 
 
@@ -317,6 +318,12 @@ bool FGeneratorFDungeonGridMakerTOneRoom::RunTest(const FString& Parameters)
 			  Scheme, {1, 4});
 	TestEqual(TEXT("New generated Grid has a Path like: 1 - 2"),
 			  Path, {1, 2});
+
+	return true;
+}
+
+bool FGeneratorUDungeonDataExtractInfo::RunTest(const FString& Parameters)
+{
 
 	return true;
 }

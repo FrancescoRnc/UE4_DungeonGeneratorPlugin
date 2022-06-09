@@ -11,7 +11,7 @@
 /**
 * 
 */
-enum class EWorldDirection : uint8
+enum class DUNGEONGENERATOR_API EWorldDirection : uint8
 {
 	NORTH = 0,
 	EAST = 1,
@@ -20,16 +20,25 @@ enum class EWorldDirection : uint8
 	MAX = 4 // DO NOT USE
 };
 
+static const TMap<EWorldDirection, FName> WorldDirectionNames =
+{
+	{ EWorldDirection::NORTH,	TEXT("North") },
+	{ EWorldDirection::EAST,	TEXT("East") },
+	{ EWorldDirection::SOUTH,	TEXT("South") },
+	{ EWorldDirection::WEST,	TEXT("West") }
+};
+
 /**
 * 
 */
-struct FDoorInfo
+struct DUNGEONGENERATOR_API FDoorInfo
 {
 	FName SourceRoomName;
 	FName NextRoomName;	
 	int32 SourceRoomIndex;
 	int32 NextRoomIndex;
 	EWorldDirection Direction;
+	EWorldDirection OppositeDoorDirection;
 };
 
 // - Future Reimplementation --------------------
@@ -42,24 +51,4 @@ public:
 	// Sets default values for this actor's properties
 	ADoor();
 
-	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
-	UStaticMeshComponent* DoorMesh;
-
-	UPROPERTY(BlueprintReadOnly, EditAnywhere)
-	UBoxComponent* InteractionCollider;
-
-	UPROPERTY(VisibleAnywhere)
-	class ADungeonRoom* LinkedRoom;
-
-	FDoorInfo DoorInfo;
-
-protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
-
-public:	
-	// Called every frame
-	//virtual void Tick(float DeltaTime) override;
-
-	void Teleport(class ACharacter* Character);
 };

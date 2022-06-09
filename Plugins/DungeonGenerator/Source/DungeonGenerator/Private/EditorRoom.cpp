@@ -23,24 +23,7 @@ AEditorRoom::AEditorRoom()
 
 FVector AEditorRoom::GetCardinalLocation(const EWorldDirection Direction) const
 {
-	FName DirectionName(NAME_None);
-	switch (Direction)
-	{
-		case EWorldDirection::NORTH:
-		DirectionName = TEXT("North");
-		break;
-		case EWorldDirection::EAST:
-		DirectionName = TEXT("East");
-		break;
-		case EWorldDirection::SOUTH:
-		DirectionName = TEXT("South");
-		break;
-		case EWorldDirection::WEST:
-		DirectionName = TEXT("West");
-		break;
-		default:
-		break;
-	}
+	const FName DirectionName = WorldDirectionNames[Direction];
 
 	return FloorMeshComponent->GetSocketLocation(DirectionName);
 }

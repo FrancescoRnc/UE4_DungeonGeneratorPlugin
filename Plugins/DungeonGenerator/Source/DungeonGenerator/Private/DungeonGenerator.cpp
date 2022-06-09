@@ -65,6 +65,7 @@ void FDungeonDataGenerator::BuildDungeon(const int32 RoomsCount)
 	OutDungeonInfo.Grid = Grid;
 	OutDungeonInfo.GridSize = Grid.Size;	
 	OutDungeonInfo.GridScheme = Scheme;
+	OutDungeonInfo.GridPathOrder = SchemePath;
 }
 
 void FDungeonDataGenerator::BuildRooms()
@@ -74,9 +75,11 @@ void FDungeonDataGenerator::BuildRooms()
 		return;
 	}
 
-	const int32 PresetsCount = FDungeonUtilities::Get()->GetPresetFilesCount();
-	if (PresetsCount == 0)
+	FDungeonUtilities* DungeonUtils = FDungeonUtilities::Get();
+	const int32 PresetsCount = DungeonUtils->GetPresetFilesCount();
+	if (PresetsCount <= 0 || DungeonUtils->GetPresetPaths().Num() <= 0)
 	{
+		OutDungeonInfo.State = EDungeonInfoState::NOVALID;
 		UE_LOG(LogDunGenBuild, Error, TEXT("Impossible to Generate a new dungeon: No Presets loaded."));
 		return;
 	}
@@ -88,16 +91,13 @@ void FDungeonDataGenerator::BuildRooms()
 	
 	for (int32 Index = 0; Index < Length; Index++)
 	{	
-		FRoomInfo Room;
-		if (PresetsCount > 0)
-		{
-			const TArray<URoomPreset*> PresetsArray = FDungeonUtilities::Get()->GetPresetsArray();
-			const int32 RandomPresetsMax = PresetsCount - 1;
-			const int32 RandomPresetIndex = Index == 0 ? 0 : FMath::RandRange(1, RandomPresetsMax);
-			const URoomPresetPtr RandomPreset = PresetsArray[RandomPresetIndex];
-			Room.PresetPath = *RandomPreset->GetPathName();
-			Room.PresetID = RandomPreset->PresetID;
-		}
+		FRoomInfo Room;		
+		const TArray<URoomPreset*> PresetsArray = DungeonUtils->GetPresetsArray();
+		const int32 RandomPresetsMax = PresetsCount - 1;
+		const int32 RandomPresetIndex = Index == 0 ? 0 : FMath::RandRange(1, RandomPresetsMax);
+		const URoomPresetPtr RandomPreset = PresetsArray[RandomPresetIndex];
+		Room.PresetPath = *RandomPreset->GetPathName();
+		Room.PresetID = RandomPreset->PresetID;
 
 		const FIntVector RoomCoords =
 		{
@@ -153,67 +153,15 @@ void FDungeonDataGenerator::BuildDoors()
 		const int32 PrevDirection = IGeneratorMethod::GetOppositeIndex(PatternIndex);
 		CurrDoor.Direction = static_cast<EWorldDirection>(PrevDirection);
 
+		PrevDoor.OppositeDoorDirection = CurrDoor.Direction;
+		CurrDoor.OppositeDoorDirection = PrevDoor.Direction;
+
 		PrevRoom.DoorsInfo.Add(PrevDoor);
 		CurrRoom.DoorsInfo.Add(CurrDoor);	
 	}
 	OutDungeonInfo.RoomsInfo = OutRoomsInfo;
 	
 	UE_LOG(LogDunGenBuild, Display, TEXT("Doors Built!"));
-}
-
-
-// FRuntimeDungeonGenerator
-FRuntimeDungeonGenerator::FRuntimeDungeonGenerator()
-{
-
-}
-
-FRuntimeDungeonGenerator::~FRuntimeDungeonGenerator()
-{
-
-}
-
-void FRuntimeDungeonGenerator::BuildDungeon(const int32 RoomsCount)
-{
-	
-}
-
-void FRuntimeDungeonGenerator::BuildRooms()
-{
-	
-}
-
-void FRuntimeDungeonGenerator::BuildDoors()
-{
-	
-}
-
-TArray<ADungeonRoom*> FRuntimeDungeonGenerator::GetRooms()
-{
-	TArray<ADungeonRoom*> Rooms = {};
-	UWorld* RuntimeWorld = GEngine->GetWorld();
-	
-	if (RuntimeWorld->WorldType != EWorldType::Game &&
-		RuntimeWorld->WorldType != EWorldType::PIE)
-	{
-		return Rooms;
-	}
-	
-	return Rooms;
-}
-
-TArray<ADoor*> FRuntimeDungeonGenerator::GetDoors()
-{
-	TArray<ADoor*> Doors = {};
-	UWorld* RuntimeWorld = GEngine->GetWorld();
-	
-	if (RuntimeWorld->WorldType != EWorldType::Game &&
-		RuntimeWorld->WorldType != EWorldType::PIE)
-	{
-		return Doors;
-	}	
-	
-	return Doors;
 }
 
 
@@ -324,30 +272,13 @@ bool FDungeonGeneratorModule::Exec(UWorld* InWorld, const TCHAR* Cmd, FOutputDev
 
 			for (int32 JIndex = 0; JIndex < DoorsCount; JIndex++)
 			{
-				const FDoorInfo CurrentDoor = CurrentRoom.DoorsInfo[JIndex];
+				const FDoorInfo& CurrentDoor = CurrentRoom.DoorsInfo[JIndex];
 
-				FString DirectionName;
-				switch (CurrentDoor.Direction)
-				{
-					case EWorldDirection::NORTH:
-						DirectionName = TEXT("NORTH");
-						break;
-					case EWorldDirection::EAST:
-						DirectionName = TEXT("EAST");
-						break;
-					case EWorldDirection::SOUTH:
-						DirectionName = TEXT("SOUTH");
-						break;
-					case EWorldDirection::WEST:
-						DirectionName = TEXT("WEST");
-						break;
-					default:
-						DirectionName = TEXT("NONE");
-						break;
-				}
+				const FName DirectionName = WorldDirectionNames[CurrentDoor.Direction];
+				const FName OppositeDirectionName = WorldDirectionNames[CurrentDoor.OppositeDoorDirection];
 				
 				UE_LOG(LogTemp, Display, TEXT("-|- -|- Door at %s Destination Room:		%s"),
-				*DirectionName, *CurrentDoor.NextRoomName.ToString());
+				*DirectionName.ToString(), *CurrentDoor.NextRoomName.ToString());
 			}
 		}
 		UE_LOG(LogTemp, Display, TEXT("/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-/-"));

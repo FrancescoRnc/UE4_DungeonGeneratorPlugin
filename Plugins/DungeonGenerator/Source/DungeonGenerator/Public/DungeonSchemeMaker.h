@@ -8,7 +8,7 @@
  * Here's a Legend for Direction values:
  * Combine via Bitwise operations to get Room Patterns.
  */
-enum class ECellDirection : uint8
+enum class DUNGEONGENERATOR_API ECellDirection : uint8
 {
     NORTH = 0,
     EAST  = 1,
@@ -40,7 +40,7 @@ struct DUNGEONGENERATOR_API FGridCell
 struct DUNGEONGENERATOR_API FGrid
 {
 	FGrid();
-	FGrid(FIntVector NewSize) :
+	FGrid(const FIntVector NewSize) :
 		Size{ NewSize }, Length{ NewSize.X * NewSize.Y }
 	{
 		Size.Z = 0;
@@ -50,6 +50,20 @@ struct DUNGEONGENERATOR_API FGrid
 			Cells[Index].Index = Index;
 			Cells[Index].Coordinate.X = Index % Size.X;
 			Cells[Index].Coordinate.Y = Index / Size.X;
+		}
+	}
+	FGrid(const FIntVector InSize, const TArray<int32>& InScheme, const TArray<int32>& InPath) :
+		Size{ InSize }, Length{ InSize.X * InSize.Y }
+	{
+		Size.Z = 0;
+		Cells.Init({}, Length);
+		for (int32 Index = 0; Index < Length; Index++)
+		{
+			Cells[Index].Index = Index;
+			Cells[Index].Coordinate.X = Index % Size.X;
+			Cells[Index].Coordinate.Y = Index / Size.X;
+			Cells[Index].CellPattern = InScheme[Index];
+			Cells[Index].PathOrder = InPath[Index];
 		}
 	}
 	~FGrid();
@@ -78,6 +92,7 @@ struct DUNGEONGENERATOR_API FGrid
 		return Cells[Index];
 	}
 
+	public:
 	TArray<int32> GetScheme();
 	TArray<int32> GetSchemePath();
 

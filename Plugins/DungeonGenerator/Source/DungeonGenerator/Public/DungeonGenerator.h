@@ -18,14 +18,12 @@ DECLARE_LOG_CATEGORY_EXTERN(LogDunGenExecQueryInfo,		All, All);
 /**
 * Standard class that generates a Dungeon given some Information like a UDungeonData Object and an FRoomInfo Object.
 */
-class FDungeonDataGenerator : public IDungeonBuilder
+class DUNGEONGENERATOR_API FDungeonDataGenerator : public IDungeonBuilder
 {
 public:
 	FDungeonDataGenerator();
-	FDungeonDataGenerator(IGeneratorMethod* InMethod)
-	{
-		Method = InMethod;
-	}
+	FDungeonDataGenerator(IGeneratorMethod* InMethod) :
+		Method{InMethod} { }
 	virtual ~FDungeonDataGenerator() override;
 
 	/** IDungeonBuilder implementation */
@@ -44,30 +42,13 @@ private:
 	IGeneratorMethod* Method = nullptr;
 };
 
-// - Future Reimplementation --------------------
-class FRuntimeDungeonGenerator : public IDungeonBuilder
-{
-public:
-	FRuntimeDungeonGenerator();
-	virtual ~FRuntimeDungeonGenerator() override;
 
-	/** IDungeonBuilder implementation */
-	virtual void BuildDungeon(const int32 RoomsCount) override;
-	virtual void BuildRooms() override;
-	virtual void BuildDoors() override;
-	
-	UDungeonData* InDungeonData = nullptr;
-
-private:
-	TArray<ADungeonRoom*> GetRooms();
-	TArray<ADoor*> GetDoors();
-};
 
 
 /**
 * Main Module of this DungeonGenerator Plugin.
 */
-class FDungeonGeneratorModule : public IModuleInterface, public FSelfRegisteringExec
+class DUNGEONGENERATOR_API FDungeonGeneratorModule : public IModuleInterface, public FSelfRegisteringExec
 {
 public:	
 

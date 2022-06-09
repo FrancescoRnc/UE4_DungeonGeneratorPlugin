@@ -102,6 +102,7 @@ void AEditorDungeon::BuildDoors()
 		DoorInfo.SourceRoomIndex = DungeonDataRef->DoorsSourceRoomIndex[Index];
 		DoorInfo.NextRoomIndex = DungeonDataRef->DoorsNextRoomIndex[Index];
 		DoorInfo.Direction = static_cast<EWorldDirection>(DungeonDataRef->DoorsDirection[Index]);
+		DoorInfo.OppositeDoorDirection = static_cast<EWorldDirection>(DungeonDataRef->DoorsOppositeDirection[Index]);
 
 		FRoomInfo SourceRoom = DungeonInfo.RoomsInfo[DoorInfo.SourceRoomIndex];
 		const URoomPresetPtr Preset = FDungeonUtilities::Get()->GetPresetByID(SourceRoom.PresetID);
@@ -113,24 +114,7 @@ void AEditorDungeon::BuildDoors()
 			0
 		};
 
-		FName DirectionName;
-		switch (DoorInfo.Direction)
-		{
-			case EWorldDirection::NORTH:
-			DirectionName = TEXT("North");
-			break;
-			case EWorldDirection::EAST:
-			DirectionName = TEXT("East");
-			break;
-			case EWorldDirection::SOUTH:
-			DirectionName = TEXT("South");
-			break;
-			case EWorldDirection::WEST:
-			DirectionName = TEXT("West");
-			break;
-			default:
-			break;
-		}
+		const FName DirectionName = WorldDirectionNames[DoorInfo.Direction];
 
 		UStaticMeshSocket* SelectedSocket = FloorMeshRef->FindSocket(DirectionName);
 		if (SelectedSocket)

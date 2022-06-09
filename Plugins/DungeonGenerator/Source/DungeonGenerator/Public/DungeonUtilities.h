@@ -15,7 +15,7 @@ using URoomPresetPtr = class URoomPreset*;
 /**
 * Enumeration that tells the Status of a Command.
 */
-enum class ECommandStatusType : uint8
+enum class DUNGEONGENERATOR_API ECommandStatusType : uint8
 {
 	ERROR		= 0,
 	VALID		= 1,
@@ -26,7 +26,7 @@ enum class ECommandStatusType : uint8
 /**
 * Enumeration that tells which type of Command has been used.
 */
-enum class EFileCommandType : uint8
+enum class DUNGEONGENERATOR_API EFileCommandType : uint8
 {
 	NONE		= 0,
 	CREATED		= 1,
@@ -41,7 +41,7 @@ enum class EFileCommandType : uint8
 * This Struct is used to know which type of Command has been used, and if a Command has been succesfully resolved.
 * Use is recommended for File Managing operations.
 */
-struct FFileReport
+struct DUNGEONGENERATOR_API FFileReport
 {
 	ECommandStatusType CommandStatus	= ECommandStatusType::ERROR;
 	EFileCommandType ResultStatus		= EFileCommandType::NONE;
@@ -51,7 +51,7 @@ struct FFileReport
 /**
  * IDungeonBuilder Interface.
  */
-class IDungeonBuilder
+class DUNGEONGENERATOR_API IDungeonBuilder
 {
 public:
 	virtual ~IDungeonBuilder();
@@ -78,7 +78,7 @@ public:
 /**
 * Singleton Class that exposes usefull functions for your environment
 */
-class FDungeonUtilities
+class DUNGEONGENERATOR_API FDungeonUtilities
 {
 public:
 	FDungeonUtilities();
@@ -135,7 +135,11 @@ public:
 
 	FORCEINLINE URoomPresetPtr GetPresetByID(const int32 ID) const
 	{
-		return CurrentSettings->RoomPresetsRefMap[ID];
+		if (CurrentSettings->RoomPresetsRefMap.Contains(ID))
+		{
+			return CurrentSettings->RoomPresetsRefMap[ID];
+		}
+		return nullptr;
 	}
 
 	TArray<URoomPresetPtr> GetPresetsArray() const;
@@ -143,7 +147,11 @@ public:
 	FORCEINLINE URoomPresetPtr GetPresetByIndex(const int32 Index) const
 	{
 		TArray<URoomPresetPtr> Array = GetPresetsArray();
-		return Array[Index];
+		if (Index >= 0 && Index < Array.Num())
+		{
+			return Array[Index];
+		}
+		return nullptr;
 	}
 
 	FORCEINLINE URoomPresetPtr GetSelectedPreset() const

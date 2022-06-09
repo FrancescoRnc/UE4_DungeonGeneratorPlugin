@@ -3,6 +3,8 @@
 
 #include "DungeonData.h"
 #include "RoomData.h"
+#include "DungeonUtilities.h"
+
 
 void FDungeonInfo::Reset()
 {
@@ -18,7 +20,10 @@ void UDungeonData::Reset()
 	GridSize = {0,0,0};
 	PathLength = 0;
 	GridScheme.Empty();
+	GridPathOrder.Empty();
 		
+	RoomsName.Empty();
+	RoomsPresetName.Empty();
 	RoomsPresetID.Empty();
 	RoomsPresetPaths.Empty();
 	RoomsCoordinate.Empty();
@@ -27,6 +32,7 @@ void UDungeonData::Reset()
 	DoorsSourceRoomIndex.Empty();
 	DoorsNextRoomIndex.Empty();
 	DoorsDirection.Empty();
+	DoorsOppositeDirection.Empty();
 }
 
 void UDungeonData::SaveData(const FDungeonInfo& Info)
@@ -34,6 +40,9 @@ void UDungeonData::SaveData(const FDungeonInfo& Info)
 	GridSize = Info.GridSize;
 	PathLength = Info.RoomsInfo.Num();
 	GridScheme = Info.GridScheme;
+	GridPathOrder = Info.GridPathOrder;
+	RoomsName.Init(TEXT(""), PathLength);
+	RoomsPresetName.Init(TEXT(""), PathLength);
 	RoomsPresetID.Init(-1, PathLength);
 	RoomsPresetPaths.Init(TEXT(""), PathLength);
 	RoomsCoordinate.Init({ 0,0,0 }, PathLength);
@@ -42,27 +51,68 @@ void UDungeonData::SaveData(const FDungeonInfo& Info)
 	for (int32 Index = 0; Index < PathLength; Index++)
 	{
 		const FRoomInfo RoomInfo = Info.RoomsInfo[Index];
+		RoomsName[Index] = RoomInfo.RoomName;
+		RoomsPresetName[Index] = RoomInfo.PresetName;
 		RoomsPresetID[Index] = RoomInfo.PresetID;
 		RoomsPresetPaths[Index] = RoomInfo.PresetPath;
 		RoomsCoordinate[Index] = RoomInfo.CoordinateInGrid;
 		RoomsGridIndex[Index] = RoomInfo.IndexInGrid;
-		const int32 RoomsCount = RoomInfo.DoorsInfo.Num();
-		for (int32 DoorIndex = 0; DoorIndex < RoomsCount; DoorIndex++)
+		const int32 DoorsCount = RoomInfo.DoorsInfo.Num();
+		for (int32 DoorIndex = 0; DoorIndex < DoorsCount; DoorIndex++)
 		{
 			const int32 IntDirection = static_cast<int32>
 				(RoomInfo.DoorsInfo[DoorIndex].Direction);
+			const int32 IntOppositeDirection = static_cast<int32>
+				(RoomInfo.DoorsInfo[DoorIndex].OppositeDoorDirection);
 			DoorsDirection.Add(IntDirection);
+			DoorsOppositeDirection.Add(IntOppositeDirection);
 			DoorsSourceRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].SourceRoomIndex);
 			DoorsNextRoomIndex.Add(RoomInfo.DoorsInfo[DoorIndex].NextRoomIndex);
 		}
 	}
 }
 
+const FDungeonInfo UDungeonData::ExtractDungeonInfo() const
+{
+	FDungeonInfo OutInfo{};
+
+	OutInfo.State = EDungeonInfoState::VALID;
+	OutInfo.GridSize = GridSize;
+	OutInfo.Grid = FGrid(GridSize, GridScheme, GridPathOrder);
+	OutInfo.GridScheme = GridScheme;
+	OutInfo.GridPathOrder = GridPathOrder;
+	OutInfo.RoomsInfo.Init({}, PathLength);
+	for (int32 Index = 0; Index < PathLength; Index++)
+	{
+		const TSoftObjectPtr<URoomPreset> Preset = 
+			FDungeonUtilities::Get()->GetPresetByID(RoomsPresetID[Index]);
+		FRoomInfo& Room = OutInfo.RoomsInfo[Index];
+
+		Room.RoomName = RoomsName[Index];
+		Room.IndexInGrid = RoomsGridIndex[Index];
+		Room.CoordinateInGrid = RoomsCoordinate[Index];
+		Room.PresetID = RoomsPresetID[Index];
+		Room.PresetName = RoomsPresetName[Index];
+		Room.PresetPath = RoomsPresetPaths[Index];
+	}
+	for (int32 Index = 0; Index < DoorsDirection.Num(); Index++)
+	{
+		FDoorInfo Door;
+		Door.Direction = static_cast<EWorldDirection>(DoorsDirection[Index]);
+		Door.OppositeDoorDirection = static_cast<EWorldDirection>(DoorsOppositeDirection[Index]);
+		Door.SourceRoomIndex = DoorsSourceRoomIndex[Index];
+		Door.NextRoomIndex = DoorsNextRoomIndex[Index];
+		OutInfo.RoomsInfo[DoorsSourceRoomIndex[Index]].DoorsInfo.Add(Door);
+	}
+
+	return OutInfo;
+}
+
 void UDungeonData::Serialize(FArchive& Ar)
 {
 	Super::Serialize(Ar);
 
-	if (Ar.IsSaving())
+	/*if (Ar.IsSaving())
 	{
 		//Ar << GridScheme;
 		//Ar << PathLength;
@@ -75,17 +125,17 @@ void UDungeonData::Serialize(FArchive& Ar)
 		//Ar << DoorsNextRoomIndex;
 		//Ar << DoorsDirection;
 
-		GridScheme.BulkSerialize(Ar);
-		Ar << PathLength;
-		Ar << GridSize;
-		RoomsPresetID.BulkSerialize(Ar);
-		RoomsPresetPaths.BulkSerialize(Ar);
-		RoomsCoordinate.BulkSerialize(Ar);
-		RoomsGridIndex.BulkSerialize(Ar);
-		DoorsSourceRoomIndex.BulkSerialize(Ar);
-		DoorsNextRoomIndex.BulkSerialize(Ar);
-		DoorsDirection.BulkSerialize(Ar);
-	}
+		//GridScheme.BulkSerialize(Ar);
+		//Ar << PathLength;
+		//Ar << GridSize;
+		//RoomsPresetID.BulkSerialize(Ar);
+		//RoomsPresetPaths.BulkSerialize(Ar);
+		//RoomsCoordinate.BulkSerialize(Ar);
+		//RoomsGridIndex.BulkSerialize(Ar);
+		//DoorsSourceRoomIndex.BulkSerialize(Ar);
+		//DoorsNextRoomIndex.BulkSerialize(Ar);
+		//DoorsDirection.BulkSerialize(Ar);
+	}*/
 	/*else if (Ar.IsLoading())
 	{
 		int32				LoadedPathLength;

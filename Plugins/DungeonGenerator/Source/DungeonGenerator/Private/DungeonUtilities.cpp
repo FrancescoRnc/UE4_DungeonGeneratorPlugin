@@ -12,6 +12,7 @@ DEFINE_LOG_CATEGORY(LogDunGenUtilities);
 // IDungeonBuilder
 IDungeonBuilder::~IDungeonBuilder()
 {
+
 }
 
 

@@ -6,6 +6,7 @@
 #include "AssetTypeCategories.h"
 #include "CoreMinimal.h"
 #include "Door.h"
+#include "Factories/Factory.h"
 #include "UObject/NoExportTypes.h"
 #include "RoomData.generated.h"
 
@@ -16,7 +17,7 @@ static EAssetTypeCategories::Type DungeonAssetTypeCategory;
 /**
 * Struct used to store data for a Room in a generated Dungeon
 */
-struct FRoomInfo
+struct DUNGEONGENERATOR_API FRoomInfo
 {
 	FName RoomName = NAME_None;
 	int32 IndexInGrid = -1;
