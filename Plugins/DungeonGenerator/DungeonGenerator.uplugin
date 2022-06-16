@@ -17,6 +17,11 @@
 	"Modules": [
 		{
 			"Name": "DungeonGenerator",
+			"Type": "Runtime",
+			"LoadingPhase": "PostEngineInit"
+		},
+		{
+			"Name": "DungeonGeneratorEditor",
 			"Type": "Editor",
 			"LoadingPhase": "PostEngineInit"
 		}

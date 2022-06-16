@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class DungeonGenerator : ModuleRules
+public class DungeonGeneratorEditor : ModuleRules
 {
-	public DungeonGenerator(ReadOnlyTargetRules Target) : base(Target)
+	public DungeonGeneratorEditor(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 		
@@ -39,22 +39,13 @@ public class DungeonGenerator : ModuleRules
 				"Slate",
 				"SlateCore",
 				"InputCore",
-				"EditorWidgets"
+				"UnrealEd",
+				"EditorWidgets",
+				"DungeonGenerator"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
-
-
-		if (Target.bBuildEditor)
-		{
-			PublicDependencyModuleNames.AddRange(
-				new string[]
-				{
-					"UnrealEd",
-				}
-				);
-		}
-
+			
 
 		DynamicallyLoadedModuleNames.AddRange(
 			new string[]

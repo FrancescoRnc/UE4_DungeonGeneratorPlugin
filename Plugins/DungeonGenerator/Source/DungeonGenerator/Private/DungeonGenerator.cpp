@@ -7,7 +7,9 @@
 #include "ContentBrowserModule.h"
 #include "DungeonData.h"
 #include "DungeonSchemeMaker.h"
+#if WITH_EDITOR
 #include "Editor.h"
+#endif
 #include "EditorDungeon.h"
 #include "EditorRoom.h"
 #include "EngineUtils.h"
@@ -166,6 +168,7 @@ void FDungeonDataGenerator::BuildDoors()
 
 
 // FDungeonGeneratorModule
+#if WITH_EDITOR
 void FDungeonGeneratorModule::StartupModule()
 {
 	DungeonUtils = MakeShared<FDungeonUtilities>();
@@ -706,6 +709,7 @@ TSharedRef<SDockTab> FDungeonGeneratorModule::SpawnNomadTab(const FSpawnTabArgs&
 		]
 	];
 }
+#endif
 
 #undef LOCTEXT_NAMESPACE
 	
