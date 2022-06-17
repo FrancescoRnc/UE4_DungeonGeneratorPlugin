@@ -13,7 +13,7 @@
 * Actor used to edit an URoomPreset Asset on Editor World 
 */
 UCLASS()
-class DUNGEONGENERATOR_API AEditorDungeon : public AActor, public IDungeonBuilder
+class DUNGEONGENERATOREDITOR_API AEditorDungeon : public AActor, public IDungeonBuilder
 {
 	GENERATED_BODY()
 	

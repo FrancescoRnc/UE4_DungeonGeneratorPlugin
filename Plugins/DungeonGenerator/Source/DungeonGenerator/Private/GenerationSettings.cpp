@@ -1,7 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-
-
 #include "GenerationSettings.h"
 
 
@@ -55,6 +53,7 @@ void UGenerationSettings::Serialize(FArchive& Ar)
 {
 	Super::Serialize(Ar);
 
+	// Fix: sometimes this gives an access violation
 	if (Ar.IsSaving())
 	{
 		int32 PresetsCount = RoomPresetsPaths.Num();

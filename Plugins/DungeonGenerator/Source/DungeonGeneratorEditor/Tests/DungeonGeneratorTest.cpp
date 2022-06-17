@@ -3,6 +3,7 @@
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "DungeonGenerator.h"
+#include "DungeonGeneratorEditor.h"
 #include "GenerationSettings.h"
 #include "Misc/AutomationTest.h"
 #include "Modules/ModuleManager.h"

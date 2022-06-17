@@ -2,16 +2,10 @@
 
 #pragma once
 
-#include "AssetTypeActions_Base.h"
-#include "AssetTypeCategories.h"
 #include "CoreMinimal.h"
 #include "Door.h"
-#include "Factories/Factory.h"
 #include "UObject/NoExportTypes.h"
 #include "RoomData.generated.h"
-
-
-static EAssetTypeCategories::Type DungeonAssetTypeCategory;
 
 
 /**
@@ -55,60 +49,4 @@ class DUNGEONGENERATOR_API URoomPreset : public UObject
 
 	UPROPERTY(EditAnywhere)
 	UStaticMesh* DoorsMesh = nullptr;
-};
-
-
-class DUNGEONGENERATOR_API FRoomPresetAssetTypeAction : public FAssetTypeActions_Base
-{
-	public:
-
-	FRoomPresetAssetTypeAction();
-
-	FRoomPresetAssetTypeAction(EAssetTypeCategories::Type Type);
-
-
-	FORCEINLINE uint32 GetCategories() override
-	{
-		return AssetTypeCategory;
-	}
-
-	FORCEINLINE FText GetName() const override
-	{
-		return FText::FromString(TEXT("Room Preset"));
-	}
-
-	FORCEINLINE UClass* GetSupportedClass() const override
-	{
-		return URoomPreset::StaticClass();
-	}
-
-	FORCEINLINE FColor GetTypeColor() const override
-	{
-		return FColor::Red;
-	}
-
-	private:
-
-	EAssetTypeCategories::Type AssetTypeCategory = EAssetTypeCategories::None;
-};
-
-
-UCLASS()
-class DUNGEONGENERATOR_API URoomPresetFactory : public UFactory
-{
-	GENERATED_BODY()
-
-	public:
-
-	URoomPresetFactory();
-
-	UObject* FactoryCreateNew
-	(
-		UClass* InClass,
-		UObject* InParent,
-		FName InName,
-		EObjectFlags Flags,
-		UObject* Context,
-		FFeedbackContext* Warn
-	);
 };

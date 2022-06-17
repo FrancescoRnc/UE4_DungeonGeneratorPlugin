@@ -38,22 +38,10 @@ public class DungeonGenerator : ModuleRules
 				"Engine",
 				"Slate",
 				"SlateCore",
-				"InputCore",
-				"EditorWidgets"
+				"InputCore"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
-
-
-		if (Target.bBuildEditor)
-		{
-			PublicDependencyModuleNames.AddRange(
-				new string[]
-				{
-					"UnrealEd",
-				}
-				);
-		}
 
 
 		DynamicallyLoadedModuleNames.AddRange(

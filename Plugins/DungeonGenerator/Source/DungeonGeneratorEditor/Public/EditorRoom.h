@@ -13,7 +13,7 @@
 * Actor used for in World representation and Editing purpose of a Room, by using a URoomPreset Object and an FRoomInfo Oject.
 */
 UCLASS()
-class DUNGEONGENERATOR_API AEditorRoom : public AActor
+class DUNGEONGENERATOREDITOR_API AEditorRoom : public AActor
 {
 	GENERATED_BODY()
 	

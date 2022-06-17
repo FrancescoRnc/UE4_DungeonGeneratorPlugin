@@ -144,6 +144,13 @@ public:
 
 	TArray<URoomPresetPtr> GetPresetsArray() const;
 
+	static TArray<URoomPresetPtr> GetPresetsArrayFromSettings(const UGenerationSettings* Settings)
+	{
+		TArray<URoomPreset*> OutArray;
+		Settings->RoomPresetsRefMap.GenerateValueArray(OutArray);
+		return OutArray;
+	}
+
 	FORCEINLINE URoomPresetPtr GetPresetByIndex(const int32 Index) const
 	{
 		TArray<URoomPresetPtr> Array = GetPresetsArray();
@@ -157,14 +164,6 @@ public:
 	FORCEINLINE URoomPresetPtr GetSelectedPreset() const
 	{
 		return SelectedPreset;
-	}
-
-	FORCEINLINE void SetSelectedPreset(UObject* Selection)
-	{		
-		if (URoomPreset* CastObject = Cast<URoomPreset>(Selection))
-		{
-			SelectedPreset = CastObject;
-		}		
 	}
 
 	FORCEINLINE const FString GetPresetPathByID(const int32 ID) const
@@ -256,42 +255,6 @@ public:
 		}
 
 		return Report;
-	}
-
-	template<class ChosenActor>
-	static ChosenActor* GetSelectedActor(UWorld* World, USelection* Selection)
-	{
-		ChosenActor* SelectedActor = nullptr;
-
-		if (UObject* SelectedObject = Selection->GetTop(ChosenActor::StaticClass()))
-		{
-			SelectedActor = Cast<ChosenActor>(SelectedObject);
-		}
-		else
-		{
-			TArray<ChosenActor*> Actors;
-			for (TActorIterator<ChosenActor> It(World); It; ++It)
-			{
-				ChosenActor* Actor = *It;
-				Actors.Add(Actor);
-			}
-			if (Actors.Num() > 0)
-			{
-				SelectedActor = Actors.Pop(true);
-				for (ChosenActor* Actor : Actors)
-				{
-					World->DestroyActor(Actor);
-				}
-				Actors.Empty();
-			}
-			else
-			{
-				SelectedActor = World->SpawnActor<ChosenActor>
-					(ChosenActor::StaticClass(), FTransform::Identity);
-			}
-		}
-
-		return SelectedActor;
 	}
 
 
