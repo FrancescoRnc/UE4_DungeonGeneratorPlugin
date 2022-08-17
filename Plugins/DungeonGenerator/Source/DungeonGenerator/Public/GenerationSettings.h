@@ -58,8 +58,7 @@ public:
 
 	void Serialize(FArchive& Ar) override;
 
-
-private:
 	UDungeonData* LoadDungeonDataReference();
+	URoomPreset* GetPresetByPath(const FString& Path);
 	TMap<int32, URoomPreset*> LoadRoomPresetReferences();
 };

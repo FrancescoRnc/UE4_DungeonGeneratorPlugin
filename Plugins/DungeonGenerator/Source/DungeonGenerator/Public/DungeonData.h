@@ -21,6 +21,7 @@ enum class DUNGEONGENERATOR_API EDungeonInfoState : uint8
 struct DUNGEONGENERATOR_API FDungeonInfo
 {
 	EDungeonInfoState State = EDungeonInfoState::NOVALID;
+	int32 RoomsCount = 0;
 	FGrid Grid{};
 	FIntVector GridSize{ 0,0,0 };
 	TArray<int32> GridScheme{};
@@ -109,7 +110,7 @@ class DUNGEONGENERATOR_API UDungeonData : public UObject
 
 	void SaveData(const FDungeonInfo& Info);
 
-	const FDungeonInfo ExtractDungeonInfo() const;
+	const FDungeonInfo ExtractDungeonInfo(const class UGenerationSettings* InSettings) const;
 
 	void Serialize(FArchive& Ar) override;
 };

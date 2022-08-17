@@ -34,16 +34,32 @@ FFileReport FDungeonUtilities::CreateGenerationSettings()
 	return Report;
 }
 
-FFileReport FDungeonUtilities::LoadGenerationSettings()
+FFileReport FDungeonUtilities::LoadGenerationSettings(UGenerationSettings*& OutSettings)
 {
-	FFileReport Report = LoadSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);;
+	FFileReport Report = LoadSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);
 	
+	OutSettings = CurrentSettings;
+
 	return Report;
 }
 
-FFileReport FDungeonUtilities::SaveGenerationSettings()
+UGenerationSettings* FDungeonUtilities::LoadGenerationSettings()
+{
+	UGenerationSettings* Settings = NewObject<UGenerationSettings>
+		(
+			GetTransientPackage(), TEXT("LoadedSettings"),
+			EObjectFlags::RF_Public | EObjectFlags::RF_Standalone
+		);
+	FFileReport Report = LoadSerializedObject<UGenerationSettings>(Settings, CurrentSettingsDefaultFilePath);
+
+	return Settings;
+}
+
+FFileReport FDungeonUtilities::SaveGenerationSettings(UGenerationSettings*& OutSettings)
 {
 	FFileReport Report = SaveSerializedObject<UGenerationSettings>(CurrentSettings, CurrentSettingsDefaultFilePath);;
+
+	OutSettings = CurrentSettings;
 
 	return Report;
 }
@@ -137,18 +153,18 @@ void FDungeonUtilities::GetPresetsOnLoad()
 	UE_LOG(LogDunGenUtilities, Display, TEXT("Presets Load process Complete!"));
 }
 
-UDungeonData* FDungeonUtilities::SaveDungeonData(const FDungeonInfo& Info)
+/*UDungeonData* FDungeonUtilities::SaveDungeonData(UGenerationSettings*& InSettings, const FDungeonInfo& Info)
 {
 	if (Info.State == EDungeonInfoState::NOVALID)
 	{
 		return nullptr;
 	}
 
-	CurrentSettings->DungeonDataRef->Reset();
-	CurrentSettings->DungeonDataRef->SaveData(Info);
+	InSettings->DungeonDataRef->Reset();
+	InSettings->DungeonDataRef->SaveData(Info);
 
-	SaveSerializedObject(CurrentSettings->DungeonDataRef, CurrentSettings->DungeonDataFilePath);
+	SaveSerializedObject(InSettings->DungeonDataRef, InSettings->DungeonDataFilePath);
 
-	return CurrentSettings->DungeonDataRef;
-}
+	return InSettings->DungeonDataRef;
+}*/
 

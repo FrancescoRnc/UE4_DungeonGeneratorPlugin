@@ -16,7 +16,17 @@ class DUNGEONGENERATOR_API FDungeonDataGenerator : public IDungeonBuilder
 public:
 	FDungeonDataGenerator();
 	FDungeonDataGenerator(IGeneratorMethod* InMethod) :
-		Method{InMethod} { }
+		Method{InMethod} 
+	{
+		Settings = NewObject<UGenerationSettings>
+		(
+			GetTransientPackage(), TEXT("LoadedSettings"),
+			EObjectFlags::RF_Public | EObjectFlags::RF_Standalone
+		);
+		FDungeonUtilities::LoadSerializedObject<UGenerationSettings>(Settings, CurrentSettingsDefaultFilePath);
+		Settings->LoadDungeonDataReference();
+		//UE_LOG(LogTemp, Error, TEXT("Settings->DataRef at %p"), Settings->DungeonDataRef);
+	}
 	virtual ~FDungeonDataGenerator() override;
 
 	/** IDungeonBuilder implementation */
@@ -28,10 +38,12 @@ public:
 	{
 		return OutDungeonInfo;
 	}
+	
+	UGenerationSettings* Settings = nullptr;
+
 
 private:
 	FDungeonInfo OutDungeonInfo{};
-
 	IGeneratorMethod* Method = nullptr;
 };
 

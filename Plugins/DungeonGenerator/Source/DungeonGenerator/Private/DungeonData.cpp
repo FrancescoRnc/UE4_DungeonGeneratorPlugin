@@ -4,6 +4,7 @@
 #include "DungeonData.h"
 #include "RoomData.h"
 #include "DungeonUtilities.h"
+#include "GenerationSettings.h"
 
 
 void FDungeonInfo::Reset()
@@ -72,7 +73,7 @@ void UDungeonData::SaveData(const FDungeonInfo& Info)
 	}
 }
 
-const FDungeonInfo UDungeonData::ExtractDungeonInfo() const
+const FDungeonInfo UDungeonData::ExtractDungeonInfo(const UGenerationSettings* InSettings) const
 {
 	FDungeonInfo OutInfo{};
 
@@ -84,8 +85,9 @@ const FDungeonInfo UDungeonData::ExtractDungeonInfo() const
 	OutInfo.RoomsInfo.Init({}, PathLength);
 	for (int32 Index = 0; Index < PathLength; Index++)
 	{
-		const TSoftObjectPtr<URoomPreset> Preset = 
-			FDungeonUtilities::Get()->GetPresetByID(RoomsPresetID[Index]);
+		const TSoftObjectPtr<URoomPreset> Preset =
+			//FDungeonUtilities::Get()->GetPresetByID(RoomsPresetID[Index]);
+			InSettings->RoomPresetsRefMap[RoomsPresetID[Index]];
 		FRoomInfo& Room = OutInfo.RoomsInfo[Index];
 
 		Room.RoomName = RoomsName[Index];

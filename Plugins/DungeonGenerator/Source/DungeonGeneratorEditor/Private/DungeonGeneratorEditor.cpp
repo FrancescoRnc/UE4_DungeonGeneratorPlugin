@@ -70,7 +70,7 @@ void FDungeonGeneratorEditorModule::StartupModule()
 	);
 
 	// Uncomment only if tab is not on Editor, then re-comment as well as it is.
-	//TabManager->TryInvokeTab(DungeonGeneratorTabName);
+	TabManager->TryInvokeTab(DungeonGeneratorTabName);
 
 	UE_LOG(LogDunGenStartup, Display, TEXT("Dungeon Generator Startup"));
 }
@@ -180,7 +180,8 @@ void FDungeonGeneratorEditorModule::DGCommandGenerateDungeonData()
 	DungeonGenerator.BuildDoors();
 	CurrentDungeonInfo = DungeonGenerator.GetDungeonInfo();
 
-	CurrentDungeonData = FDungeonUtilities::Get()->SaveDungeonData(CurrentDungeonInfo);
+	UGenerationSettings* Settings = FDungeonUtilities::Get()->GetGenerationSettings();
+	CurrentDungeonData = FDungeonUtilities::Get()->SaveDungeonData(Settings, CurrentDungeonInfo);
 
 	UE_LOG(LogDunGenCommands, Display, TEXT("A NEW DUNGEON HAS BEEN GENERATED!"));
 }
@@ -406,7 +407,8 @@ TSharedRef<SDockTab> FDungeonGeneratorEditorModule::SpawnNomadTab(const FSpawnTa
 		if (InCommitType == ETextCommit::OnEnter)
 		{
 			FDungeonUtilities::Get()->SetDungeonDataPath(*InText.ToString());
-			FDungeonUtilities::Get()->SaveGenerationSettings();
+			UGenerationSettings* Settings = FDungeonUtilities::Get()->GetGenerationSettings();
+			FDungeonUtilities::Get()->SaveGenerationSettings(Settings);
 		}
 	})
 		]
@@ -431,7 +433,8 @@ TSharedRef<SDockTab> FDungeonGeneratorEditorModule::SpawnNomadTab(const FSpawnTa
 		if (InCommitType == ETextCommit::OnEnter)
 		{
 			FDungeonUtilities::Get()->SetDungeonRoomsCount(FCString::Atoi(*InText.ToString()));
-			FDungeonUtilities::Get()->SaveGenerationSettings();
+			UGenerationSettings* Settings = FDungeonUtilities::Get()->GetGenerationSettings();
+			FDungeonUtilities::Get()->SaveGenerationSettings(Settings);
 		}
 	})
 		]

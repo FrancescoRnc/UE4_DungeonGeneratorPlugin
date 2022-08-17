@@ -12,6 +12,9 @@ DECLARE_LOG_CATEGORY_EXTERN(LogDunGenUtilities, All, All);
 
 using URoomPresetPtr = class URoomPreset*;
 
+static FString CurrentSettingsDefaultFilePath = TEXT("/DungeonGenerator/Settings/Settings.bin");
+
+
 /**
 * Enumeration that tells the Status of a Command.
 */
@@ -86,9 +89,11 @@ public:
 	URoomPresetPtr SelectedPreset = nullptr;
 
 	// Basic Functions used for managing the Generation Settings Object.
+	UGenerationSettings* NewEmptyGenerationSettings();
 	FFileReport CreateGenerationSettings();
-	FFileReport LoadGenerationSettings();
-	FFileReport SaveGenerationSettings();
+	FFileReport LoadGenerationSettings(UGenerationSettings*& OutSettings);
+	UGenerationSettings* LoadGenerationSettings();
+	FFileReport SaveGenerationSettings(UGenerationSettings*& OutSettings);
 
 
 // Here's a series of simple Functions as Getters or Setters
@@ -191,11 +196,23 @@ public:
 	// This function gets all URoomPreset Files to be loaded after loading all Assets.
 	void GetPresetsOnLoad();
 
-	UDungeonData* SaveDungeonData(const struct FDungeonInfo& Info);
 
+	static UDungeonData* SaveDungeonData(UGenerationSettings*& InSettings, const struct FDungeonInfo& Info)
+	{
+		if (Info.State == EDungeonInfoState::NOVALID)
+		{
+			UE_LOG(LogTemp, Error, TEXT("NOVALID"));
+			return nullptr;
+		}
+		
+		InSettings->DungeonDataRef->Reset();
+		InSettings->DungeonDataRef->SaveData(Info);
+
+		SaveSerializedObject(InSettings->DungeonDataRef, InSettings->DungeonDataFilePath);
+		return InSettings->DungeonDataRef;
+	}
 
 // Here are some Static Template Functions used to manage generic UObjects.
-
 	template<class NewObjectClass>
 	static FFileReport CreateSerializedObject(NewObjectClass*& OutObjectRef, const FName& ObjectName, const FString& FilePath)
 	{
@@ -259,7 +276,6 @@ public:
 
 
 private:
-	FString CurrentSettingsDefaultFilePath = TEXT("/DungeonGenerator/Settings/Settings.bin");
 	UGenerationSettings* CurrentSettings = nullptr;
 
 

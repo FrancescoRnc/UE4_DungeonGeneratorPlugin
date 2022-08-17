@@ -15,7 +15,6 @@ ARuntimeDungeonExample::ARuntimeDungeonExample()
 void ARuntimeDungeonExample::BeginPlay()
 {
 	Super::BeginPlay();
-
 	Build();
 }
 
@@ -26,6 +25,5 @@ void ARuntimeDungeonExample::Build()
 	DungeonGenerator.BuildDungeon(10);
 	DungeonGenerator.BuildRooms();
 	DungeonGenerator.BuildDoors();
-	FDungeonInfo DungeonInfo = DungeonGenerator.GetDungeonInfo();
 }
 

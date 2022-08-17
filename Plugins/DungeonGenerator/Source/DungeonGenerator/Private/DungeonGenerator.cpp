@@ -20,7 +20,7 @@ FDungeonDataGenerator::FDungeonDataGenerator()
 
 FDungeonDataGenerator::~FDungeonDataGenerator()
 {
-	Method = nullptr;
+	
 }
 
 void FDungeonDataGenerator::BuildDungeon(const int32 RoomsCount)
@@ -28,21 +28,32 @@ void FDungeonDataGenerator::BuildDungeon(const int32 RoomsCount)
 	OutDungeonInfo = {};
 	if (RoomsCount <= 0)
 	{
-		UE_LOG(LogTemp, Display, TEXT("Cannot Building Dungeon! Rooms Count is no valid!"));
+		UE_LOG(LogTemp, Error, TEXT("Cannot Building Dungeon! Rooms Count is no valid!"));
 		return;
 	}
 
 	UE_LOG(LogTemp, Display, TEXT("Building Dungeon..."));
 
-	// Here you can set whichever of your custom GeneratorMethods for your custom Dungeon Generation
-	//TSharedPtr<FDefaultGeneratorMethod> Method = MakeShared<FDefaultGeneratorMethod>();
-	FDungeonGridMaker DungeonGridMaker(RoomsCount, Method);
+	FGrid Grid = {};
 
-	FGrid Grid = DungeonGridMaker.Make();
+	// This Do-While loop prevents the GridMaker in making a Grid
+	// with a smaller number of Rooms than the requested amount
+	do
+	{
+		// Here you can set whichever of your custom GeneratorMethods for your custom Dungeon Generation
+		FDungeonGridMaker DungeonGridMaker(RoomsCount, Method);
+
+		Grid = DungeonGridMaker.Make();
+		UE_LOG(LogTemp, Display, TEXT("Trying making a Grid..."));
+
+	} while (Grid.PathLength < RoomsCount);
+	UE_LOG(LogTemp, Display, TEXT("Grid made!"));
+	
 	const TArray<int32> Scheme = Grid.GetScheme();
 	const TArray<int32> SchemePath = Grid.GetSchemePath();
 	
 	OutDungeonInfo.State = EDungeonInfoState::VALID;
+	OutDungeonInfo.RoomsCount = Grid.PathLength;
 	OutDungeonInfo.Grid = Grid;
 	OutDungeonInfo.GridSize = Grid.Size;	
 	OutDungeonInfo.GridScheme = Scheme;
@@ -56,10 +67,10 @@ void FDungeonDataGenerator::BuildRooms()
 		return;
 	}
 
-	FDungeonUtilities* DungeonUtils = FDungeonUtilities::Get();
-	UGenerationSettings* Settings = FDungeonUtilities::Get()->GetGenerationSettings();
-	const int32 PresetsCount = Settings->RoomPresetsRefMap.Num(); //DungeonUtils->GetPresetFilesCount();
-	if (PresetsCount <= 0 || Settings->RoomPresetsPaths.Num() /*DungeonUtils->GetPresetPaths().Num()*/ <= 0)
+	const TMap<int32, URoomPreset*> RoomPresetsRef = Settings->LoadRoomPresetReferences();
+	const int32 PresetsCount = RoomPresetsRef.Num(); //DungeonUtils->GetPresetFilesCount();
+	const int32 PresetPathsCount = Settings->RoomPresetsPaths.Num();
+	if (PresetsCount <= 0 || PresetPathsCount <= 0)
 	{
 		OutDungeonInfo.State = EDungeonInfoState::NOVALID;
 		UE_LOG(LogTemp, Error, TEXT("Impossible to Generate a new dungeon: No Presets loaded."));
@@ -67,17 +78,20 @@ void FDungeonDataGenerator::BuildRooms()
 	}
 
 	UE_LOG(LogTemp, Display, TEXT("Building Rooms..."));
-
+	
 	const int32 Length = OutDungeonInfo.Grid.PathLength;
-	OutDungeonInfo.RoomsInfo.Init({}, Length);	
+	OutDungeonInfo.RoomsInfo.Init({}, Length);
+
+	TArray<URoomPreset*> RoomPresetsArray;
+	RoomPresetsRef.GenerateValueArray(RoomPresetsArray);
 	
 	for (int32 Index = 0; Index < Length; Index++)
 	{	
 		FRoomInfo Room;		
-		const TArray<URoomPreset*> PresetsArray = FDungeonUtilities::GetPresetsArrayFromSettings(Settings); //DungeonUtils->GetPresetsArray();		
+		
 		const int32 RandomPresetsMax = PresetsCount - 1;
 		const int32 RandomPresetIndex = Index == 0 ? 0 : FMath::RandRange(1, RandomPresetsMax);
-		const URoomPresetPtr RandomPreset = PresetsArray[RandomPresetIndex];
+		const URoomPresetPtr RandomPreset = RoomPresetsArray[RandomPresetIndex];
 		Room.PresetPath = *RandomPreset->GetPathName();
 		Room.PresetID = RandomPreset->PresetID;
 
@@ -143,8 +157,9 @@ void FDungeonDataGenerator::BuildDoors()
 	}
 	OutDungeonInfo.RoomsInfo = OutRoomsInfo;
 	
-	UE_LOG(LogTemp, Display, TEXT("Doors Built!"));
+	UE_LOG(LogTemp, Display , TEXT("Doors Built!"));
 }
+
 
 // FDungeonGeneratorModule
 
